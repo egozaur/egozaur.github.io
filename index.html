@@ -1,0 +1,455 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0C0B09">
+<meta name="robots" content="noindex">
+<title>PL3Y</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<script src="/auth.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,600;1,600&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap">
+<style>
+  :root {
+    --bg: #0C0B09;
+    --glow: #1C1813;
+    --gold: #C9A85C;
+    --gold-hi: #E3C77F;
+    --text: #EFE8D8;
+    --muted: #A39C8C;
+    --red: #B9463B;
+    --blue: #3E6AA8;
+    --neutral: #2A2620;
+    --serif: "Cormorant Garamond", Georgia, "Times New Roman", serif;
+    --mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
+    --sans: Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
+    --ease: cubic-bezier(.22, .8, .24, 1);
+    --dur: .6s;
+    /* szerokość aktywnej karty: ~360 px na dużym ekranie, ~250 px na telefonie */
+    --cw: clamp(190px, min(66vw, calc((100vh - 290px) * .72)), 360px);
+    --ch: calc(var(--cw) * 1.39);
+  }
+  @supports (height: 100svh) {
+    :root { --cw: clamp(190px, min(66vw, calc((100svh - 290px) * .72)), 360px); }
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    min-height: 100vh;
+    min-height: 100svh;
+    display: flex;
+    flex-direction: column;
+    background: var(--bg) radial-gradient(ellipse 70% 60% at 50% 48%, var(--glow) 0%, var(--bg) 70%) no-repeat fixed;
+    color: var(--text);
+    font-family: var(--sans);
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+  button { font: inherit; color: inherit; }
+  :focus-visible { outline: 2px solid var(--gold-hi); outline-offset: 4px; }
+  .sr {
+    position: absolute; width: 1px; height: 1px; overflow: hidden;
+    clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap;
+  }
+
+  /* ---------- znak ---------- */
+  .brand {
+    display: flex; align-items: center; justify-content: center; gap: 14px;
+    margin: 0; padding: max(28px, env(safe-area-inset-top)) 16px 0;
+    font-weight: normal;
+  }
+  .brand-mark {
+    width: 38px; height: 38px; border: 1.5px solid var(--gold); border-radius: 50%;
+    display: grid; place-items: center; padding-bottom: 2px;
+    font: italic 600 25px/1 var(--serif); color: var(--gold);
+    box-shadow: 0 0 24px rgba(201, 168, 92, .14);
+  }
+  .brand-name { font: 500 13px/1 var(--mono); letter-spacing: .42em; color: var(--text); margin-right: -.42em; }
+
+  main {
+    flex: 1;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    padding: 8px 0 max(28px, env(safe-area-inset-bottom));
+    transition: opacity .25s ease;
+  }
+  body.leaving main { opacity: 0; }
+
+  /* ---------- karuzela ---------- */
+  .stage {
+    width: 100%;
+    overflow: hidden;
+    padding: 44px 0;
+    touch-action: pan-y;
+  }
+  .track {
+    position: relative;
+    height: var(--ch);
+    perspective: 1600px;
+    transform-style: preserve-3d;
+  }
+  .card {
+    --x: 0; --a: 0; --ry: 0deg; --s: 1; --o: 1;
+    position: absolute; left: 50%; top: 50%;
+    width: var(--cw); height: var(--ch);
+    margin: 0; padding: calc(var(--cw) * .072);
+    display: flex; flex-direction: column; align-items: stretch;
+    text-align: left;
+    background: linear-gradient(165deg, #1B1814 0%, #13110E 55%, #0F0E0B 100%);
+    border: 1px solid rgba(201, 168, 92, .22);
+    border-radius: 16px;
+    box-shadow: 0 30px 60px -20px rgba(0, 0, 0, .7);
+    cursor: pointer;
+    opacity: var(--o);
+    z-index: calc(10 - var(--a));
+    transform:
+      translate(-50%, -50%)
+      translateX(calc(var(--x) * var(--cw)))
+      translateZ(calc(var(--a) * -70px))
+      rotateY(var(--ry))
+      scale(var(--s));
+    transition:
+      transform var(--dur) var(--ease),
+      opacity var(--dur) var(--ease),
+      filter var(--dur) var(--ease),
+      border-color var(--dur) var(--ease),
+      box-shadow var(--dur) var(--ease),
+      visibility 0s linear 0s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .card[data-pos="1"] { filter: brightness(.62) saturate(.5); }
+  .card[data-pos="2"] { filter: brightness(.5) saturate(.3); }
+  .card[data-pos="3"] {
+    visibility: hidden; pointer-events: none;
+    transition-property: transform, opacity, filter, border-color, box-shadow, visibility;
+    transition-delay: 0s, 0s, 0s, 0s, 0s, var(--dur);
+  }
+  .card.is-active {
+    border-color: var(--gold);
+    box-shadow:
+      0 0 0 1px rgba(201, 168, 92, .25),
+      0 0 60px -6px rgba(201, 168, 92, .32),
+      0 40px 80px -24px rgba(0, 0, 0, .85);
+  }
+  .card:not(.is-active):hover { border-color: rgba(201, 168, 92, .5); }
+  .card:focus-visible { outline-offset: 6px; border-radius: 16px; }
+
+  .card.soon {
+    background: linear-gradient(165deg, #16130F 0%, #100E0B 100%);
+    border: 1.5px dashed rgba(201, 168, 92, .3);
+  }
+  .card.soon.is-active {
+    border-color: rgba(201, 168, 92, .85);
+    box-shadow: 0 0 50px -10px rgba(201, 168, 92, .22), 0 40px 80px -24px rgba(0, 0, 0, .85);
+  }
+
+  .card-top {
+    display: flex; justify-content: space-between; align-items: baseline; gap: 10px;
+    font: 500 max(9.5px, calc(var(--cw) * .03))/1 var(--mono);
+    letter-spacing: .22em; text-transform: uppercase;
+  }
+  .card-no { color: var(--muted); }
+  .card-tag { color: var(--gold); text-align: right; }
+  .card-art { flex: 1; display: grid; place-items: center; min-height: 0; }
+  .card-title {
+    display: block;
+    font: 600 calc(var(--cw) * .135)/1 var(--serif);
+    letter-spacing: .005em;
+    color: var(--text);
+    padding-top: calc(var(--cw) * .045);
+    border-top: 1px solid rgba(201, 168, 92, .16);
+  }
+  .card.soon .card-title { color: var(--muted); }
+
+  /* miniatura planszy Tajniaków */
+  .board {
+    width: 66%;
+    display: grid; grid-template-columns: repeat(5, 1fr);
+    gap: calc(var(--cw) * .016);
+    padding: calc(var(--cw) * .03);
+    background: rgba(0, 0, 0, .3);
+    border: 1px solid rgba(201, 168, 92, .14);
+    border-radius: 10px;
+  }
+  .sq {
+    display: block; aspect-ratio: 1; border-radius: 3px;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, .08), inset 0 -2px 3px rgba(0, 0, 0, .25);
+  }
+  .sq.r { background: var(--red); }
+  .sq.b { background: var(--blue); }
+  .sq.n { background: var(--neutral); }
+  .sq.a { background: #070605; box-shadow: inset 0 0 0 1.5px var(--gold), 0 0 8px rgba(201, 168, 92, .35); }
+
+  /* lakowa pieczęć */
+  .seal {
+    position: relative;
+    width: calc(var(--cw) * .38); aspect-ratio: 1;
+    display: grid; place-items: center;
+    border-radius: 49% 51% 47% 53% / 52% 48% 52% 48%;
+    background: radial-gradient(circle at 34% 30%, #A8362C 0%, #8E2B22 45%, #6E1F18 100%);
+    box-shadow:
+      0 8px 18px rgba(0, 0, 0, .6),
+      0 2px 4px rgba(0, 0, 0, .5),
+      inset 0 2px 4px rgba(255, 190, 170, .16),
+      inset 0 -6px 12px rgba(0, 0, 0, .35);
+    transform: rotate(-8deg);
+  }
+  .seal::before {
+    content: ""; position: absolute; inset: 15%; border-radius: 50%;
+    box-shadow: inset 0 0 0 2px rgba(60, 12, 8, .35), 0 0 0 1px rgba(255, 170, 150, .08);
+  }
+  .seal-p {
+    font: italic 600 calc(var(--cw) * .2)/1 var(--serif);
+    color: #6A1C15;
+    padding-bottom: .06em;
+    text-shadow: -1px -1px 0 rgba(30, 6, 4, .55), 1px 1px 0 rgba(255, 160, 140, .25);
+  }
+
+  /* ---------- sterowanie ---------- */
+  .controls { display: flex; align-items: center; justify-content: center; gap: 22px; padding: 0 16px; }
+  .arrow {
+    width: 52px; height: 52px; flex: none;
+    display: grid; place-items: center;
+    border-radius: 50%;
+    background: rgba(12, 11, 9, .5);
+    border: 1px solid rgba(201, 168, 92, .38);
+    color: var(--gold);
+    cursor: pointer;
+    transition: border-color .2s, background .2s, color .2s;
+  }
+  .arrow:hover { border-color: var(--gold-hi); color: var(--gold-hi); background: rgba(201, 168, 92, .08); }
+  .arrow svg { width: 18px; height: 18px; }
+
+  .cta { width: 176px; display: flex; justify-content: center; }
+  .play, .soon-badge {
+    width: 100%; height: 52px;
+    display: inline-flex; align-items: center; justify-content: center; gap: 12px;
+    border-radius: 999px;
+    font: 600 13px/1 var(--mono); letter-spacing: .3em; text-transform: uppercase;
+    text-decoration: none;
+    padding-left: .3em;
+  }
+  .play {
+    background: var(--gold); color: var(--bg);
+    box-shadow: 0 10px 30px -10px rgba(201, 168, 92, .5);
+    transition: background .2s, box-shadow .2s;
+  }
+  .play:hover { background: var(--gold-hi); box-shadow: 0 10px 36px -8px rgba(227, 199, 127, .55); }
+  .play .arr { letter-spacing: 0; transition: transform .25s var(--ease); }
+  .play:hover .arr { transform: translateX(4px); }
+  .soon-badge { border: 1.5px dashed rgba(201, 168, 92, .42); color: var(--muted); }
+
+  .dots { display: flex; justify-content: center; gap: 2px; margin-top: 22px; }
+  .dot {
+    width: 24px; height: 24px; padding: 0; border: 0; background: none; cursor: pointer;
+    display: grid; place-items: center;
+  }
+  .dot::before {
+    content: ""; display: block; width: 7px; height: 7px; border-radius: 4px;
+    background: rgba(239, 232, 216, .22);
+    transition: width var(--dur) var(--ease), background var(--dur) var(--ease);
+  }
+  .dot:hover::before { background: rgba(239, 232, 216, .45); }
+  .dot[aria-current="true"] { width: 40px; }
+  .dot[aria-current="true"]::before { width: 26px; background: var(--gold); }
+
+  @media (max-width: 520px) {
+    .stage { padding: 30px 0; }
+    .controls { gap: 14px; }
+    .arrow { width: 46px; height: 46px; }
+    .cta { width: 152px; }
+    .play, .soon-badge { height: 48px; font-size: 12px; }
+  }
+  @media (max-height: 560px) {
+    .brand { padding-top: 14px; }
+    .stage { padding: 22px 0; }
+    .dots { margin-top: 12px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    :root { --dur: .15s; }
+    .card {
+      transform:
+        translate(-50%, -50%)
+        translateX(calc(var(--x) * var(--cw)))
+        scale(var(--s));
+    }
+    main { transition: none; }
+    .play .arr { transition: none; }
+  }
+</style>
+</head>
+<body>
+<h1 class="brand" aria-label="PL3Y">
+  <span class="brand-mark" aria-hidden="true">P</span>
+  <span class="brand-name" aria-hidden="true">PL3Y</span>
+</h1>
+
+<main>
+  <section class="stage" id="stage" aria-roledescription="karuzela" aria-label="Gry">
+    <div class="track" id="track"></div>
+  </section>
+
+  <div class="controls">
+    <button class="arrow" id="prev" type="button" aria-label="Poprzednia gra">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>
+    </button>
+    <div class="cta" id="cta"></div>
+    <button class="arrow" id="next" type="button" aria-label="Następna gra">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg>
+    </button>
+  </div>
+
+  <div class="dots" id="dots" role="group" aria-label="Wybór gry"></div>
+  <p class="sr" id="live" aria-live="polite"></p>
+</main>
+
+<script>
+// Lista gier – nowa gra = jedna linijka.
+// href: adres gry albo null (gra niedostępna); preview: 'board' | 'seal'
+const GAMES = [
+  { title: 'Tajniacy', label: 'Ściśle tajne',   href: '/tajniacy/', preview: 'board' },
+  { title: 'Wkrótce',  label: 'Zapieczętowane', href: null,         preview: 'seal'  },
+  { title: 'Wkrótce',  label: 'Zapieczętowane', href: null,         preview: 'seal'  },
+  { title: 'Wkrótce',  label: 'Zapieczętowane', href: null,         preview: 'seal'  },
+  { title: 'Wkrótce',  label: 'Zapieczętowane', href: null,         preview: 'seal'  },
+];
+
+// Miniatura planszy: 9 czerwonych, 8 niebieskich, 7 neutralnych, 1 zabójca.
+const BOARD = 'rbnrrbnabrnrbrnbrnbnrnbrb';
+
+const PREVIEWS = {
+  board: () => '<span class="board">' + [...BOARD].map(k => `<i class="sq ${k}"></i>`).join('') + '</span>',
+  seal:  () => '<span class="seal"><span class="seal-p">P</span></span>',
+};
+
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const num = i => 'NO. ' + String(i + 1).padStart(2, '0');
+
+const $ = id => document.getElementById(id);
+const stage = $('stage'), track = $('track'), cta = $('cta'), dots = $('dots'), live = $('live');
+const n = GAMES.length;
+let active = 0;
+
+// Położenie kart bocznych (wielokrotność szerokości karty), skala i przezroczystość wg odległości od środka.
+const SHIFT = [0, .78, 1.32, 1.7];
+const SCALE = [1, .8, .68, .6];
+const ALPHA = [1, .55, .25, 0];
+
+track.innerHTML = GAMES.map((g, i) => `
+  <button class="card${g.href ? '' : ' soon'}" type="button" data-i="${i}"
+          aria-label="${esc(g.title)}, ${num(i)}${g.href ? '' : ', niedostępna'}">
+    <span class="card-top"><span class="card-no">${num(i)}</span><span class="card-tag">${esc(g.label)}</span></span>
+    <span class="card-art" aria-hidden="true">${(PREVIEWS[g.preview] || PREVIEWS.seal)()}</span>
+    <span class="card-title">${esc(g.title)}</span>
+  </button>`).join('');
+
+dots.innerHTML = GAMES.map((g, i) =>
+  `<button class="dot" type="button" data-i="${i}" aria-label="${esc(g.title)}, ${num(i)}"></button>`).join('');
+
+const cards = [...track.children];
+const dotEls = [...dots.children];
+
+// Najkrótsza odległość ze znakiem na zapętlonej liście.
+function offset(i) {
+  let d = ((i - active) % n + n) % n;
+  if (d > n / 2) d -= n;
+  return d;
+}
+
+function layout(announce) {
+  cards.forEach((el, i) => {
+    const d = offset(i), a = Math.min(Math.abs(d), 3), s = Math.sign(d);
+    el.dataset.pos = a;
+    el.classList.toggle('is-active', d === 0);
+    el.style.setProperty('--x', s * SHIFT[a]);
+    el.style.setProperty('--a', a);
+    el.style.setProperty('--ry', (-s * 32) + 'deg');
+    el.style.setProperty('--s', SCALE[a]);
+    el.style.setProperty('--o', ALPHA[a]);
+    el.tabIndex = a > 2 ? -1 : 0;
+    el.toggleAttribute('aria-hidden', a > 2);
+    el.setAttribute('aria-current', d === 0 ? 'true' : 'false');
+  });
+  dotEls.forEach((el, i) => el.setAttribute('aria-current', i === active ? 'true' : 'false'));
+
+  const g = GAMES[active];
+  cta.innerHTML = g.href
+    ? `<a class="play" href="${esc(g.href)}">Graj <span class="arr" aria-hidden="true">→</span></a>`
+    : '<span class="soon-badge">Wkrótce</span>';
+
+  if (announce) live.textContent = `${g.title}, ${active + 1} z ${n}${g.href ? '' : ', niedostępna'}`;
+}
+
+function go(i) {
+  active = ((i % n) + n) % n;
+  layout(true);
+}
+
+function launch() {
+  const g = GAMES[active];
+  if (!g.href) return;
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) { location.href = g.href; return; }
+  document.body.classList.add('leaving');
+  setTimeout(() => { location.href = g.href; }, 220);
+}
+addEventListener('pageshow', () => document.body.classList.remove('leaving'));
+
+// Kliknięcie myszą/palcem zdejmuje fokus z przycisku, żeby Enter dalej uruchamiał grę.
+const dropFocus = e => { if (e.detail > 0) e.currentTarget.blur(); };
+
+let swiped = false;
+track.addEventListener('click', e => {
+  const card = e.target.closest('.card');
+  if (!card || swiped) return;
+  const i = +card.dataset.i;
+  if (i === active) launch(); else go(i);
+});
+$('prev').addEventListener('click', e => { go(active - 1); dropFocus(e); });
+$('next').addEventListener('click', e => { go(active + 1); dropFocus(e); });
+dots.addEventListener('click', e => {
+  const d = e.target.closest('.dot');
+  if (!d) return;
+  go(+d.dataset.i);
+  if (e.detail > 0) d.blur();
+});
+cta.addEventListener('click', e => {
+  if (e.target.closest('.play') && !e.ctrlKey && !e.metaKey && !e.shiftKey && e.button === 0) {
+    e.preventDefault();
+    launch();
+  }
+});
+
+document.addEventListener('keydown', e => {
+  if (e.altKey || e.ctrlKey || e.metaKey) return;
+  const t = e.target;
+  if (t.closest && t.closest('input, textarea, select, [contenteditable]')) return;
+  if (e.key === 'ArrowLeft')  { e.preventDefault(); go(active - 1); }
+  else if (e.key === 'ArrowRight') { e.preventDefault(); go(active + 1); }
+  // Enter na przycisku/linku robi to, co ten element; poza nimi uruchamia grę ze środka.
+  else if (e.key === 'Enter' && !t.closest('button, a')) { e.preventDefault(); launch(); }
+});
+
+// Swipe palcem
+let sx = null, sy = 0;
+stage.addEventListener('touchstart', e => {
+  const t = e.touches[0];
+  sx = t.clientX; sy = t.clientY;
+}, { passive: true });
+stage.addEventListener('touchend', e => {
+  if (sx === null) return;
+  const t = e.changedTouches[0], dx = t.clientX - sx, dy = t.clientY - sy;
+  sx = null;
+  if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy) * 1.2) {
+    swiped = true;
+    go(active + (dx < 0 ? 1 : -1));
+    setTimeout(() => { swiped = false; }, 400);
+  }
+}, { passive: true });
+
+layout(false);
+</script>
+</body>
+</html>
