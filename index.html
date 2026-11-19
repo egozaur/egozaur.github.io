@@ -182,6 +182,21 @@
   .sq.n { background: var(--neutral); }
   .sq.a { background: #070605; box-shadow: inset 0 0 0 1.5px var(--gold), 0 0 8px rgba(201, 168, 92, .35); }
 
+  /* miniatura Mafii: wachlarz kart roli */
+  .dossier { position: relative; width: 62%; aspect-ratio: 1; display: block; }
+  .dc {
+    position: absolute; left: 50%; top: 50%; width: 52%; aspect-ratio: .72; border-radius: 8px;
+    background: linear-gradient(165deg, #241F18, #14110D);
+    border: 1px solid rgba(201, 168, 92, .45);
+    box-shadow: 0 12px 24px -10px rgba(0, 0, 0, .8);
+    transform-origin: 50% 120%;
+  }
+  .dc.l { transform: translate(-50%, -50%) rotate(-16deg); }
+  .dc.r { transform: translate(-50%, -50%) rotate(16deg); }
+  .dc.m { transform: translate(-50%, -50%); display: grid; place-items: center; border-color: var(--red); }
+  .seal.mini { width: 62%; transform: rotate(-8deg); }
+  .seal.mini .seal-p { font-size: calc(var(--cw) * .1); }
+
   /* lakowa pieczęć */
   .seal {
     position: relative;
@@ -308,10 +323,10 @@
 
 <script>
 // Lista gier – nowa gra = jedna linijka.
-// href: adres gry albo null (gra niedostępna); preview: 'board' | 'seal'
+// href: adres gry albo null (gra niedostępna); preview: 'board' | 'dossier' | 'seal'
 const GAMES = [
-  { title: 'Tajniacy', label: 'Ściśle tajne',   href: '/tajniacy/', preview: 'board' },
-  { title: 'Wkrótce',  label: 'Zapieczętowane', href: null,         preview: 'seal'  },
+  { title: 'Tajniacy', label: 'Ściśle tajne',   href: '/tajniacy/', preview: 'board'   },
+  { title: 'Mafia',    label: 'Tajne role',     href: '/mafia/',    preview: 'dossier' },
   { title: 'Wkrótce',  label: 'Zapieczętowane', href: null,         preview: 'seal'  },
   { title: 'Wkrótce',  label: 'Zapieczętowane', href: null,         preview: 'seal'  },
   { title: 'Wkrótce',  label: 'Zapieczętowane', href: null,         preview: 'seal'  },
@@ -323,6 +338,8 @@ const BOARD = 'rbnrrbnabrnrbrnbrnbnrnbrb';
 const PREVIEWS = {
   board: () => '<span class="board">' + [...BOARD].map(k => `<i class="sq ${k}"></i>`).join('') + '</span>',
   seal:  () => '<span class="seal"><span class="seal-p">P</span></span>',
+  // wachlarz trzech tajnych kart roli, środkowa z pieczęcią mafii
+  dossier: () => '<span class="dossier"><i class="dc l"></i><i class="dc r"></i><i class="dc m"><span class="seal mini"><span class="seal-p">M</span></span></i></span>',
 };
 
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));

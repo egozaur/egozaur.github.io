@@ -12,7 +12,7 @@ PL3Y is the game lobby at `https://pl3y.pl` (repo `egozaur/egozaur.github.io`, a
 
 Project repos of the same GitHub account are served under the domain automatically, e.g. the `egozaur/tajniacy` repo appears at `https://pl3y.pl/tajniacy/`. Don't edit game repos from here.
 
-- `index.html`: the lobby. A 3D carousel of game cards. The `GAMES` array at the top of the script is the whole game list (`title`, `label`, `href` or `null` for "coming soon", `preview`: `'board'` or `'seal'`). Adding a game means adding one line. Carousel controls: click a side card, the ‹ › arrows, ←/→ keys, swipe, and Enter or "GRAJ →" to launch the centre game.
+- `index.html`: the lobby. A 3D carousel of game cards. The `GAMES` array at the top of the script is the whole game list (`title`, `label`, `href` or `null` for "coming soon", `preview`: `'board'`, `'dossier'` or `'seal'`). Adding a game means adding one line. Carousel controls: click a side card, the ‹ › arrows, ←/→ keys, swipe, and Enter or "GRAJ →" to launch the centre game.
 - `auth.js`: the shared password gate for the whole domain (see below). It is loaded synchronously in `<head>` as `/auth.js`.
 - `favicon.svg`, `CNAME` (`pl3y.pl`).
 
