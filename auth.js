@@ -58,9 +58,7 @@
       '-webkit-font-smoothing:antialiased}' +
     '#pl3y-gate *{box-sizing:border-box}' +
     '#pl3y-gate .pg-box{width:min(340px,100%);margin:0;display:flex;flex-direction:column;align-items:center;gap:14px}' +
-    '#pl3y-gate .pg-mark{width:76px;height:76px;border:1.5px solid #C9A85C;border-radius:50%;display:grid;place-items:center;' +
-      'font:italic 600 46px/1 "Cormorant Garamond",Georgia,serif;color:#C9A85C;padding-bottom:4px;' +
-      'box-shadow:0 0 48px rgba(201,168,92,.16),inset 0 0 18px rgba(201,168,92,.08)}' +
+    '#pl3y-gate .pg-mark{display:block;width:84px;height:84px;filter:drop-shadow(0 0 18px rgba(233,196,106,.35))}' +
     '#pl3y-gate .pg-title{margin:6px 0 22px;padding-left:.42em;font:500 13px/1 "JetBrains Mono",ui-monospace,monospace;' +
       'letter-spacing:.42em;color:#EFE8D8}' +
     '#pl3y-gate .pg-label{align-self:stretch;text-align:center;font:500 11px/1 "JetBrains Mono",ui-monospace,monospace;' +
@@ -134,7 +132,7 @@
     gate.setAttribute('aria-labelledby', 'pl3y-gate-title');
     gate.innerHTML =
       '<form class="pg-box" novalidate>' +
-        '<div class="pg-mark" aria-hidden="true">P</div>' +
+        '<img class="pg-mark" src="/mark.svg" alt="" aria-hidden="true">' +
         '<h2 class="pg-title" id="pl3y-gate-title">PL3Y</h2>' +
         '<label class="pg-label" for="pl3y-pass">Hasło</label>' +
         '<input class="pg-input" id="pl3y-pass" name="password" type="password" autocomplete="current-password"' +
