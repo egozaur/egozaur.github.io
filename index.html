@@ -225,6 +225,13 @@
   .ladder i.on { background: linear-gradient(90deg, #8a6a24, var(--gold), #8a6a24); box-shadow: 0 0 10px rgba(201, 168, 92, .45); }
   .ladder i.top { border-color: var(--gold); }
 
+  /* miniatura Kurczaczego Imperium: piramida kart, dolny rząd podświetlony */
+  .pyr { width: 70%; display: flex; flex-direction: column; align-items: center; }
+  .pyr-row { display: flex; gap: calc(var(--cw) * .014); margin-top: calc(var(--cw) * -.06); }
+  .pyr-row:first-child { margin-top: 0; }
+  .pyr i { display: block; width: calc(var(--cw) * .1); aspect-ratio: 44 / 68; border-radius: calc(var(--cw) * .012); background: #15130F; border: 1px solid rgba(201, 168, 92, .35); }
+  .pyr i.on { background: linear-gradient(180deg, rgba(233, 196, 106, .35), rgba(201, 168, 92, .12)); border-color: var(--gold); box-shadow: 0 0 10px rgba(201, 168, 92, .3); }
+
   /* miniatura z pliku img/*.webp; gdy pliku brak, img znika i zostaje miniatura z CSS */
   .thumb { display: block; width: 66%; aspect-ratio: 1; object-fit: cover; border-radius: 10px; }
   .thumb ~ * { display: none; }
@@ -387,13 +394,14 @@
 
 <script>
 // Lista gier – nowa gra = jedna linijka.
-// href: adres gry albo null (gra niedostępna); preview: 'board' | 'dossier' | 'ladder' | 'letter' | 'seal'
+// href: adres gry albo null (gra niedostępna); preview: 'board' | 'dossier' | 'ladder' | 'letter' | 'pyramid' | 'seal'
 // img: plik miniatury w img/ – podmiana pliku na GitHubie zmienia miniaturę; brak pliku = miniatura z preview
 const GAMES = [
   { title: 'Tajniacy', label: 'Ściśle tajne',   href: '/tajniacy/', preview: 'board',   img: '/img/tajniacy.webp' },
   { title: 'Mafia',    label: 'Tajne role',     href: '/mafia/',    preview: 'dossier', img: '/img/mafia.webp'    },
   { title: 'Milionerzy', label: '12 pytań',       href: '/milion/',   preview: 'ladder',  img: '/img/milion.webp'   },
   { title: 'Rozejrzyj się', label: 'W zasięgu wzroku', href: '/rozejrzyj/', preview: 'letter', img: '/img/rozejrzyj.webp' },
+  { title: 'Kurczacze Imperium', label: 'Pojedynek kurników', href: '/kurczacze/', preview: 'pyramid', img: '/img/kurczacze.webp' },
   { title: 'Wkrótce',  label: 'Zapieczętowane', href: null,         preview: 'seal',    img: '/img/wkrotce.webp'  },
 ];
 
@@ -409,6 +417,8 @@ const PREVIEWS = {
   // złota litera w okręgu (Rozejrzyj się)
   letter: () => '<span class="lring"><b>R</b></span>',
   dossier: () => '<span class="dossier"><i class="dc l"></i><i class="dc r"></i><i class="dc m"><span class="seal mini"><span class="seal-p">M</span></span></i></span>',
+  // piramida kart Ery Jajka (3-4-5), dolny rząd dostępny (Kurczacze Imperium)
+  pyramid: () => '<span class="pyr">' + [3, 4, 5].map((n, r) => `<span class="pyr-row">${('<i' + (r === 2 ? ' class="on"' : '') + '></i>').repeat(n)}</span>`).join('') + '</span>',
 };
 
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
