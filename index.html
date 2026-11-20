@@ -10,6 +10,9 @@
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <link rel="manifest" href="/site.webmanifest">
 <meta name="apple-mobile-web-app-title" content="PL3Y">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
 <script src="/auth.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -271,6 +274,28 @@
   .dot[aria-current="true"] { width: 40px; }
   .dot[aria-current="true"]::before { width: 26px; background: var(--gold); }
 
+  /* ---------- skaner kodów QR (żeby zostać w aplikacji PL3Y zamiast otwierać przeglądarkę) ---------- */
+  .scanrow { display: flex; justify-content: center; margin-top: 14px; padding-bottom: max(16px, env(safe-area-inset-bottom)); }
+  .scan {
+    height: 42px; padding: 0 20px; border-radius: 999px; cursor: pointer;
+    background: rgba(12, 11, 9, .5); border: 1px solid rgba(201, 168, 92, .38); color: var(--gold);
+    font: 500 12px/1 var(--mono); letter-spacing: .14em; text-transform: uppercase;
+  }
+  .scan:hover { border-color: var(--gold-hi); color: var(--gold-hi); }
+  .scanov {
+    position: fixed; inset: 0; z-index: 50; background: rgba(8, 7, 6, .96);
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; padding: 20px;
+  }
+  .scanov[hidden] { display: none; }
+  .scanbox { position: relative; width: min(86vw, 420px); aspect-ratio: 1; border-radius: 18px; overflow: hidden; background: #000; }
+  .scanbox video { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .scanframe { position: absolute; inset: 14%; border: 2px solid var(--gold); border-radius: 14px; box-shadow: 0 0 0 100vmax rgba(0, 0, 0, .35); }
+  .scanmsg { margin: 0; max-width: 420px; text-align: center; color: var(--text); font-size: 15px; line-height: 1.45; min-height: 2.9em; }
+  .scanclose {
+    height: 46px; padding: 0 28px; border-radius: 999px; cursor: pointer;
+    background: var(--gold); color: var(--bg); border: 0; font: 600 13px/1 var(--mono); letter-spacing: .2em; text-transform: uppercase;
+  }
+
   @media (max-width: 520px) {
     .stage { padding: 30px 0; }
     .controls { gap: 14px; }
@@ -320,7 +345,17 @@
 
   <div class="dots" id="dots" role="group" aria-label="Wybór gry"></div>
   <p class="sr" id="live" aria-live="polite"></p>
+  <div class="scanrow"><button class="scan" id="scan" type="button" hidden>📷 Skanuj kod QR</button></div>
 </main>
+
+<div class="scanov" id="scanov" hidden role="dialog" aria-modal="true" aria-label="Skaner kodów QR">
+  <div class="scanbox">
+    <video id="scanvid" playsinline muted></video>
+    <div class="scanframe" aria-hidden="true"></div>
+  </div>
+  <p class="scanmsg" id="scanmsg">Skieruj aparat na kod QR z ekranu gry.</p>
+  <button class="scanclose" id="scanclose" type="button">Anuluj</button>
+</div>
 
 <script>
 // Lista gier – nowa gra = jedna linijka.
@@ -468,6 +503,112 @@ stage.addEventListener('touchend', e => {
 }, { passive: true });
 
 layout(false);
+</script>
+<script>
+/* Skaner kodów QR. Systemowy aparat otwiera link w przeglądarce, a ten skaner otwiera go wewnątrz aplikacji PL3Y
+   (z ekranu głównego). Dekodowanie: BarcodeDetector (Android/Chrome), a w Safari jsQR z /vendor/jsQR.js (ładowany dopiero tu).
+   Przyjmuje tylko adresy PL3Y i otwiera je pod bieżącym adresem strony, żeby zostać w aplikacji. */
+(function () {
+  const HOSTS = ['pl3y.pl', 'www.pl3y.pl', 'egozaur.github.io'];
+  // Tekst z kodu QR → adres do otwarcia albo null (obcy kod).
+  function target(text) {
+    try {
+      const u = new URL(String(text).trim());
+      if (u.protocol !== 'https:' && u.protocol !== 'http:') return null;
+      if (!HOSTS.includes(u.hostname) && u.host !== location.host) return null;
+      return location.origin + u.pathname + u.search + u.hash;
+    } catch (e) { return null; }
+  }
+  window.PL3Y_SCAN = { target };
+
+  const md = navigator.mediaDevices;
+  if (!md || !md.getUserMedia) return;
+  // przycisk tylko na telefonach i tabletach (na komputerze nie ma czego skanować); ?scan wymusza go do testów
+  if (!matchMedia('(pointer: coarse)').matches && !/[?&]scan\b/.test(location.search)) return;
+
+  const btn = document.getElementById('scan'), ov = document.getElementById('scanov');
+  const vid = document.getElementById('scanvid'), msg = document.getElementById('scanmsg');
+  const canvas = document.createElement('canvas'), ctx = canvas.getContext('2d', { willReadFrequently: true });
+  let stream = null, timer = null, detector = null, busy = false;
+  btn.hidden = false;
+
+  async function decoder() {
+    if (detector || window.jsQR) return;
+    if ('BarcodeDetector' in window) {
+      try {
+        if ((await BarcodeDetector.getSupportedFormats()).includes('qr_code')) { detector = new BarcodeDetector({ formats: ['qr_code'] }); return; }
+      } catch (e) {}
+    }
+    await new Promise((res, rej) => {
+      const s = document.createElement('script');
+      s.src = '/vendor/jsQR.js'; s.onload = res; s.onerror = () => rej(new Error('jsqr'));
+      document.head.appendChild(s);
+    });
+  }
+
+  async function frame() {
+    if (!stream || busy || vid.readyState < 2) return;
+    busy = true;
+    try {
+      let text = null;
+      if (detector) {
+        const r = await detector.detect(vid);
+        if (r.length) text = r[0].rawValue;
+      } else {
+        const w = vid.videoWidth, h = vid.videoHeight, k = Math.min(1, 640 / Math.max(w, h));
+        canvas.width = Math.round(w * k); canvas.height = Math.round(h * k);
+        ctx.drawImage(vid, 0, 0, canvas.width, canvas.height);
+        const d = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const r = window.jsQR(d.data, d.width, d.height, { inversionAttempts: 'dontInvert' });
+        if (r) text = r.data;
+      }
+      if (text) found(text);
+    } catch (e) {} finally { busy = false; }
+  }
+
+  function found(text) {
+    const url = target(text);
+    if (!url) { msg.textContent = 'To nie jest kod PL3Y. Zeskanuj kod z ekranu gry.'; return; }
+    msg.textContent = 'Otwieram…';
+    stop(false);
+    location.href = url;
+  }
+
+  async function open() {
+    ov.hidden = false;
+    msg.textContent = 'Uruchamiam aparat…';
+    try {
+      await decoder();
+      stream = await md.getUserMedia({ video: { facingMode: { ideal: 'environment' } }, audio: false });
+      vid.srcObject = stream;
+      await vid.play();
+      msg.textContent = 'Skieruj aparat na kod QR z ekranu gry.';
+      timer = setInterval(frame, 150);
+    } catch (e) {
+      stop(false);
+      msg.textContent = e && e.name === 'NotAllowedError'
+        ? 'Brak dostępu do aparatu. Zezwól na niego w Ustawieniach telefonu (iPhone: Ustawienia → Safari → Aparat) i spróbuj ponownie.'
+        : 'Nie udało się uruchomić aparatu.';
+    }
+  }
+
+  function stop(hide = true) {
+    clearInterval(timer); timer = null;
+    if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
+    vid.srcObject = null;
+    if (hide) ov.hidden = true;
+  }
+
+  btn.addEventListener('click', open);
+  document.getElementById('scanclose').addEventListener('click', () => stop());
+  document.addEventListener('visibilitychange', () => { if (document.hidden && !ov.hidden) stop(); });
+  // klawisze karuzeli nie działają pod otwartym skanerem; Escape zamyka
+  document.addEventListener('keydown', e => {
+    if (ov.hidden) return;
+    e.stopPropagation();
+    if (e.key === 'Escape') stop();
+  }, true);
+})();
 </script>
 </body>
 </html>

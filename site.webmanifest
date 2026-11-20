@@ -1,7 +1,10 @@
 {
+  "id": "/",
   "name": "PL3Y",
   "short_name": "PL3Y",
   "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
   "background_color": "#0F0D0A",
   "theme_color": "#0F0D0A",
   "icons": [
