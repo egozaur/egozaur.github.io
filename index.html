@@ -331,6 +331,117 @@
     background: var(--gold); color: var(--bg); border: 0; font: 600 13px/1 var(--mono); letter-spacing: .2em; text-transform: uppercase;
   }
 
+  /* ---------- akcent gry w tle (płynna zmiana koloru) ---------- */
+  @property --accent { syntax: '<color>'; inherits: true; initial-value: #C9A85C; }
+  body { --accent: #C9A85C; transition: --accent .8s ease; }
+  body::before {
+    content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none;
+    background:
+      radial-gradient(ellipse 55% 45% at 50% 46%, color-mix(in srgb, var(--accent) 17%, transparent) 0%, transparent 70%),
+      radial-gradient(ellipse 80% 30% at 50% 108%, color-mix(in srgb, var(--accent) 12%, transparent) 0%, transparent 70%);
+    animation: breathe 9s ease-in-out infinite alternate;
+  }
+  @keyframes breathe { from { opacity: .65; } to { opacity: 1; } }
+
+  /* ---------- narzędzia w rogu: widok i dźwięk ---------- */
+  .tools {
+    position: absolute; top: max(18px, env(safe-area-inset-top)); right: max(14px, env(safe-area-inset-right));
+    display: flex; gap: 8px; z-index: 5;
+  }
+  .tool {
+    width: 40px; height: 40px; display: grid; place-items: center; padding: 0; cursor: pointer;
+    border-radius: 50%; background: rgba(12, 11, 9, .5); border: 1px solid rgba(201, 168, 92, .32); color: var(--gold);
+    transition: border-color .2s, color .2s, background .2s;
+  }
+  .tool:hover { border-color: var(--gold-hi); color: var(--gold-hi); background: rgba(201, 168, 92, .08); }
+  .tool svg { width: 18px; height: 18px; }
+  .tool .off, .tool[aria-pressed="true"] .on { display: none; }
+  .tool[aria-pressed="true"] .off { display: block; }
+  #viewbtn .ic-car { display: none; }
+  body[data-view="grid"] #viewbtn .ic-grid { display: none; }
+  body[data-view="grid"] #viewbtn .ic-car { display: block; }
+
+  /* ---------- opis wybranej gry ---------- */
+  .desc {
+    margin: 0 0 18px; padding: 0 24px; max-width: 460px; min-height: 2.9em;
+    text-align: center; font: 400 15px/1.45 var(--sans); color: var(--muted);
+    transition: opacity .2s;
+  }
+  .desc.swap { opacity: 0; }
+  .note, .gnote {
+    display: flex; gap: 8px; align-items: flex-start; text-align: left;
+    font: 500 12.5px/1.4 var(--sans); color: var(--gold-hi);
+    background: rgba(201, 168, 92, .08); border: 1px solid rgba(201, 168, 92, .3); border-radius: 10px;
+    padding: 8px 12px;
+  }
+  .note { margin: -6px 24px 16px; max-width: 420px; }
+  .note[hidden] { display: none; }
+  .note::before, .gnote::before { content: "🔒"; flex: none; }
+
+  /* ---------- widok siatki ---------- */
+  .grid {
+    width: 100%; max-width: 1040px; margin: 0 auto; padding: 22px 16px 8px;
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px;
+  }
+  .grid[hidden] { display: none; }
+  body[data-view="grid"] .stage,
+  body[data-view="grid"] .controls,
+  body[data-view="grid"] .dots,
+  body[data-view="grid"] .desc,
+  body[data-view="grid"] .note { display: none; }
+  .gcard {
+    --cw: 170px;
+    display: flex; flex-direction: column; gap: 10px; text-align: left; cursor: pointer;
+    padding: 14px; border-radius: 16px;
+    background: linear-gradient(165deg, #1B1814 0%, #13110E 55%, #0F0E0B 100%);
+    border: 1px solid rgba(201, 168, 92, .22);
+    transition: transform .25s var(--ease), border-color .2s, box-shadow .25s, opacity .25s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .gcard:hover, .gcard:focus-visible { border-color: var(--gold); transform: translateY(-3px); box-shadow: 0 18px 40px -18px color-mix(in srgb, var(--ga) 55%, transparent); }
+  .gcard.soon { border: 1.5px dashed rgba(201, 168, 92, .3); background: #100E0B; }
+  .gcard.soon .card-title { color: var(--muted); }
+  .gcard .card-art { flex: none; height: 170px; }
+  .gcard .card-title { font-size: 26px; }
+  .gcard .gdesc { font: 400 13.5px/1.45 var(--sans); color: var(--muted); }
+  .gcard.go { transform: scale(1.05); opacity: 0; }
+  body.leaving .card.is-active { --s: 1.14 !important; }
+
+  /* ---------- dołączanie kodem pokoju ---------- */
+  .joinbox { width: 100%; max-width: 420px; padding: 0 16px; margin-top: 14px; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+  .joinform { display: flex; gap: 8px; width: 100%; }
+  .joinin {
+    flex: 1; min-width: 0; height: 42px; padding: 0 16px; border-radius: 999px; text-align: center;
+    background: rgba(12, 11, 9, .5); border: 1px solid rgba(201, 168, 92, .38); color: var(--text);
+    font: 500 14px/1 var(--mono); letter-spacing: .3em; text-transform: uppercase;
+  }
+  .joinin::placeholder { color: var(--muted); letter-spacing: .14em; font-size: 11px; }
+  .joinin:focus-visible { outline-offset: 2px; }
+  .joingo {
+    height: 42px; padding: 0 20px; border-radius: 999px; cursor: pointer; border: 0;
+    background: var(--gold); color: var(--bg); font: 600 12px/1 var(--mono); letter-spacing: .16em; text-transform: uppercase;
+  }
+  .joingo:hover { background: var(--gold-hi); }
+  .joinpick { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+  .joinpick[hidden] { display: none; }
+  .joinpick p { flex-basis: 100%; margin: 0; text-align: center; font-size: 13px; color: var(--muted); }
+  .joinpick button {
+    height: 38px; padding: 0 16px; border-radius: 999px; cursor: pointer;
+    background: rgba(12, 11, 9, .5); border: 1px solid rgba(201, 168, 92, .5); color: var(--text);
+    font: 500 12px/1 var(--mono); letter-spacing: .08em;
+  }
+  .joinpick button:hover, .joinpick button.sug { border-color: var(--gold-hi); color: var(--gold-hi); background: rgba(201, 168, 92, .1); }
+  .joinerr { margin: 0; min-height: 1.2em; font-size: 12.5px; color: #D98A80; }
+
+  @media (max-width: 520px) {
+    .grid { grid-template-columns: repeat(2, 1fr); gap: 12px; padding-top: 14px; }
+    .gcard { --cw: 130px; padding: 10px; }
+    .gcard .card-art { height: 130px; }
+    .gcard .card-title { font-size: 21px; }
+    .gcard .gdesc { font-size: 12.5px; }
+    .tool { width: 38px; height: 38px; }
+    .desc { font-size: 14px; margin-bottom: 14px; }
+  }
   @media (max-width: 520px) {
     .stage { padding: 30px 0; }
     .controls { gap: 14px; }
@@ -354,6 +465,9 @@
     }
     main { transition: none; }
     .play .arr { transition: none; }
+    body { transition: none; }
+    body::before { animation: none; }
+    .gcard, .gcard:hover, .gcard:focus-visible, .gcard.go { transform: none; transition: none; }
   }
 </style>
 </head>
@@ -363,10 +477,23 @@
   <span class="brand-name" aria-hidden="true">PL3Y</span>
 </h1>
 
+<div class="tools">
+  <button class="tool" id="viewbtn" type="button" aria-label="Pokaż wszystkie gry (siatka)">
+    <svg class="ic-grid" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="6.5" height="6.5" rx="1.2"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.2"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1.2"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.2"/></svg>
+    <svg class="ic-car" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="5" width="8" height="14" rx="1.5"/><path d="M4 8v8M20 8v8" stroke-linecap="round"/></svg>
+  </button>
+  <button class="tool" id="mutebtn" type="button" aria-pressed="false" aria-label="Wycisz dźwięki">
+    <svg class="on" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9.5v5h3.5L12 18.5v-13L7.5 9.5z"/><path d="M15.5 9a4 4 0 010 6M18 6.5a7.5 7.5 0 010 11"/></svg>
+    <svg class="off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9.5v5h3.5L12 18.5v-13L7.5 9.5z"/><path d="M16 9.5l5 5M21 9.5l-5 5"/></svg>
+  </button>
+</div>
+
 <main>
   <section class="stage" id="stage" aria-roledescription="karuzela" aria-label="Gry">
     <div class="track" id="track"></div>
   </section>
+  <p class="desc" id="desc"></p>
+  <p class="note" id="note" hidden></p>
 
   <div class="controls">
     <button class="arrow" id="prev" type="button" aria-label="Poprzednia gra">
@@ -378,9 +505,21 @@
     </button>
   </div>
 
+  <section class="grid" id="grid" aria-label="Wszystkie gry" hidden></section>
+
   <div class="dots" id="dots" role="group" aria-label="Wybór gry"></div>
   <p class="sr" id="live" aria-live="polite"></p>
   <div class="scanrow"><button class="scan" id="scan" type="button" hidden>📷 Skanuj kod QR</button></div>
+
+  <div class="joinbox">
+    <form class="joinform" id="joinform" autocomplete="off">
+      <input class="joinin" id="joincode" type="text" maxlength="5" inputmode="text" autocapitalize="characters"
+             autocorrect="off" spellcheck="false" placeholder="KOD POKOJU" aria-label="Kod pokoju (5 znaków)">
+      <button class="joingo" type="submit">Dołącz</button>
+    </form>
+    <p class="joinerr" id="joinerr" aria-live="polite"></p>
+    <div class="joinpick" id="joinpick" hidden></div>
+  </div>
 </main>
 
 <div class="scanov" id="scanov" hidden role="dialog" aria-modal="true" aria-label="Skaner kodów QR">
@@ -397,12 +536,27 @@
 // href: adres gry albo null (gra niedostępna); preview: 'board' | 'dossier' | 'ladder' | 'letter' | 'pyramid' | 'seal'
 // img: plik miniatury w img/ – podmiana pliku na GitHubie zmienia miniaturę; brak pliku = miniatura z preview
 const GAMES = [
-  { title: 'Tajniacy', label: 'Ściśle tajne',   href: '/tajniacy/', preview: 'board',   img: '/img/tajniacy.webp' },
-  { title: 'Mafia',    label: 'Tajne role',     href: '/mafia/',    preview: 'dossier', img: '/img/mafia.webp'    },
-  { title: 'Milionerzy', label: '12 pytań',       href: '/milion/',   preview: 'ladder',  img: '/img/milion.webp'   },
-  { title: 'Rozejrzyj się', label: 'W zasięgu wzroku', href: '/rozejrzyj/', preview: 'letter', img: '/img/rozejrzyj.webp' },
-  { title: 'Kurczacze Imperium', label: 'Pojedynek kurników', href: '/kurczacze/', preview: 'pyramid', img: '/img/kurczacze.webp' },
-  { title: 'Wkrótce',  label: 'Zapieczętowane', href: null,         preview: 'seal',    img: '/img/wkrotce.webp'  },
+  { title: 'Tajniacy', label: 'Ściśle tajne',   href: '/tajniacy/', preview: 'board',   img: '/img/tajniacy.webp',
+    desc: 'Dwie drużyny, kapitanowie i hasła. Znajdź swoje słowa i omiń zabójcę.', accent: '#4F7FC0',
+    note: 'W tej grze musisz zeskanować kod QR aparatem. Kod jest ściśle strzeżony!' },
+  { title: 'Mafia',    label: 'Tajne role',     href: '/mafia/',    preview: 'dossier', img: '/img/mafia.webp',
+    desc: 'Tajne role, noc i głosowanie. Znajdźcie mafię, zanim ona znajdzie was.', accent: '#C4503F' },
+  { title: 'Milionerzy', label: '12 pytań',       href: '/milion/',   preview: 'ladder',  img: '/img/milion.webp',
+    desc: '12 pytań do miliona i koła ratunkowe. Grasz solo albo z telefonami.', accent: '#D9B456' },
+  { title: 'Rozejrzyj się', label: 'W zasięgu wzroku', href: '/rozejrzyj/', preview: 'letter', img: '/img/rozejrzyj.webp',
+    desc: 'Jedna litera, jeden komputer. Wymieniaj rzeczy, które widzisz wokół.', accent: '#5E9E86' },
+  { title: 'Kurczacze Imperium', label: 'Pojedynek kurników', href: '/kurczacze/', preview: 'pyramid', img: '/img/kurczacze.webp',
+    desc: 'Pojedynek dwóch graczy: dobieraj karty i buduj najlepsze imperium kurników.', accent: '#E8B83A' },
+  { title: 'Wkrótce',  label: 'Zapieczętowane', href: null,         preview: 'seal',    img: '/img/wkrotce.webp',
+    desc: 'Zapieczętowana. Nowa gra pojawi się tu już wkrótce.', accent: '#B9463B' },
+];
+
+// Dołączanie kodem pokoju: każda gra ma własną przestrzeń kodów i własny format linku, więc gracz wskazuje grę.
+const JOIN = [
+  { game: 'Mafia',      name: 'Mafia',        url: c => '/mafia/play.html?r=' + c },
+  { game: 'Milionerzy', name: 'Milionerzy',   url: c => '/milion/play.html#' + c },
+  { game: 'Tajniacy',   name: 'Tajniacy duet', url: c => '/tajniacy/duo.html#' + c },
+  { game: 'Kurczacze Imperium', name: 'Kurczacze', url: c => '/kurczacze/#' + c },
 ];
 
 // Miniatura planszy: 9 czerwonych, 8 niebieskich, 7 neutralnych, 1 zabójca.
@@ -428,6 +582,8 @@ const $ = id => document.getElementById(id);
 const stage = $('stage'), track = $('track'), cta = $('cta'), dots = $('dots'), live = $('live');
 const n = GAMES.length;
 let active = 0;
+const descEl = $('desc'), noteEl = $('note');
+let descT = 0;
 
 // Położenie kart bocznych (wielokrotność szerokości karty), skala i przezroczystość wg odległości od środka.
 const SHIFT = [0, .78, 1.32, 1.7];
@@ -447,6 +603,71 @@ dots.innerHTML = GAMES.map((g, i) =>
 
 const cards = [...track.children];
 const dotEls = [...dots.children];
+
+// ---------- siatka wszystkich gier ----------
+const grid = $('grid');
+grid.innerHTML = GAMES.map((g, i) => `
+  <button class="gcard${g.href ? '' : ' soon'}" type="button" data-i="${i}" style="--ga:${esc(g.accent || '#C9A85C')}"
+          aria-label="${esc(g.title)}${g.href ? '' : ', niedostępna'}. ${esc(g.desc || '')}${g.note ? ' ' + esc(g.note) : ''}">
+    <span class="card-top"><span class="card-no">${num(i)}</span><span class="card-tag">${esc(g.label)}</span></span>
+    <span class="card-art" aria-hidden="true">${g.img ? `<img class="thumb" src="${esc(g.img)}" alt="" onerror="this.remove()">` : ''}${(PREVIEWS[g.preview] || PREVIEWS.seal)()}</span>
+    <span class="card-title">${esc(g.title)}</span>
+    <span class="gdesc">${esc(g.desc || '')}</span>
+    ${g.note ? `<span class="gnote">${esc(g.note)}</span>` : ''}
+  </button>`).join('');
+const gcards = [...grid.children];
+
+// ---------- dźwięk i haptyka (Web Audio, bez plików) ----------
+const store = {
+  get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+  set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} },
+};
+let muted = store.get('pl3y_mute') === '1';
+let actx = null;
+function beep(freq, dur, vol, type, delay) {
+  if (muted) return;
+  try {
+    actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+    if (actx.state === 'suspended') actx.resume();
+    const t = actx.currentTime + (delay || 0), o = actx.createOscillator(), g = actx.createGain();
+    o.type = type || 'sine'; o.frequency.setValueAtTime(freq, t);
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(vol || .05, t + .008);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g).connect(actx.destination);
+    o.start(t); o.stop(t + dur + .02);
+  } catch (e) {}
+}
+const buzz = ms => { if (!muted && navigator.vibrate) { try { navigator.vibrate(ms); } catch (e) {} } };
+const sfx = {
+  tick()  { beep(740, .07, .035, 'triangle'); buzz(8); },
+  swap()  { beep(520, .06, .03, 'triangle'); buzz(6); },
+  launch() { beep(523, .16, .05, 'sine'); beep(784, .24, .05, 'sine', .09); buzz(18); },
+  error() { beep(180, .16, .05, 'square'); buzz([20, 40, 20]); },
+};
+const mutebtn = $('mutebtn');
+function paintMute() {
+  mutebtn.setAttribute('aria-pressed', muted ? 'true' : 'false');
+  mutebtn.setAttribute('aria-label', muted ? 'Włącz dźwięki' : 'Wycisz dźwięki');
+}
+mutebtn.addEventListener('click', () => { muted = !muted; store.set('pl3y_mute', muted ? '1' : '0'); paintMute(); if (!muted) sfx.tick(); });
+paintMute();
+
+// ---------- widok: karuzela / siatka ----------
+let view = store.get('pl3y_view') === 'grid' ? 'grid' : 'carousel';
+const viewbtn = $('viewbtn');
+function setView(v, save) {
+  view = v;
+  document.body.dataset.view = v;
+  grid.hidden = v !== 'grid';
+  viewbtn.setAttribute('aria-label', v === 'grid' ? 'Wróć do karuzeli' : 'Pokaż wszystkie gry (siatka)');
+  if (save) store.set('pl3y_view', v);
+}
+viewbtn.addEventListener('click', e => {
+  sfx.swap();
+  setView(view === 'grid' ? 'carousel' : 'grid', true);
+  dropFocus(e);
+});
 
 // Najkrótsza odległość ze znakiem na zapętlonej liście.
 function offset(i) {
@@ -472,6 +693,15 @@ function layout(announce) {
   dotEls.forEach((el, i) => el.setAttribute('aria-current', i === active ? 'true' : 'false'));
 
   const g = GAMES[active];
+  document.body.style.setProperty('--accent', g.accent || '#C9A85C');
+  noteEl.textContent = g.note || '';
+  noteEl.hidden = !g.note;
+  if (descEl.textContent !== (g.desc || '')) {
+    descEl.classList.add('swap');
+    clearTimeout(descT);
+    descT = setTimeout(() => { descEl.textContent = g.desc || ''; descEl.classList.remove('swap'); }, announce ? 130 : 0);
+    if (!announce) { descEl.textContent = g.desc || ''; descEl.classList.remove('swap'); }
+  }
   cta.innerHTML = g.href
     ? `<a class="play" href="${esc(g.href)}">Graj <span class="arr" aria-hidden="true">→</span></a>`
     : '<span class="soon-badge">Wkrótce</span>';
@@ -481,17 +711,20 @@ function layout(announce) {
 
 function go(i) {
   active = ((i % n) + n) % n;
+  sfx.tick();
   layout(true);
 }
 
-function launch() {
-  const g = GAMES[active];
-  if (!g.href) return;
+function launch(idx) {
+  const g = GAMES[idx === undefined ? active : idx];
+  if (!g.href) { sfx.error(); return; }
+  sfx.launch();
   if (matchMedia('(prefers-reduced-motion: reduce)').matches) { location.href = g.href; return; }
   document.body.classList.add('leaving');
-  setTimeout(() => { location.href = g.href; }, 220);
+  if (view === 'grid' && idx !== undefined) gcards[idx].classList.add('go');
+  setTimeout(() => { location.href = g.href; }, 260);
 }
-addEventListener('pageshow', () => document.body.classList.remove('leaving'));
+addEventListener('pageshow', () => { document.body.classList.remove('leaving'); gcards.forEach(c => c.classList.remove('go')); });
 
 // Kliknięcie myszą/palcem zdejmuje fokus z przycisku, żeby Enter dalej uruchamiał grę.
 const dropFocus = e => { if (e.detail > 0) e.currentTarget.blur(); };
@@ -502,6 +735,13 @@ track.addEventListener('click', e => {
   if (!card || swiped) return;
   const i = +card.dataset.i;
   if (i === active) launch(); else go(i);
+});
+grid.addEventListener('click', e => {
+  const c = e.target.closest('.gcard');
+  if (!c) return;
+  const i = +c.dataset.i;
+  active = i; layout(false);
+  launch(i);
 });
 $('prev').addEventListener('click', e => { go(active - 1); dropFocus(e); });
 $('next').addEventListener('click', e => { go(active + 1); dropFocus(e); });
@@ -518,10 +758,36 @@ cta.addEventListener('click', e => {
   }
 });
 
+// Siatka: strzałki, Home/End. Pion wybiera najbliższą kartę w sąsiednim rzędzie.
+function gridKey(e) {
+  const keys = ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'];
+  if (!keys.includes(e.key)) return;
+  e.preventDefault();
+  const cur = Math.max(0, gcards.indexOf(document.activeElement));
+  let next = cur;
+  if (e.key === 'Home') next = 0;
+  else if (e.key === 'End') next = gcards.length - 1;
+  else if (e.key === 'ArrowLeft') next = Math.max(0, cur - 1);
+  else if (e.key === 'ArrowRight') next = Math.min(gcards.length - 1, cur + 1);
+  else {
+    const dir = e.key === 'ArrowDown' ? 1 : -1, r0 = gcards[cur].getBoundingClientRect();
+    let best = null, bd = 1e9;
+    gcards.forEach((c, i) => {
+      const r = c.getBoundingClientRect();
+      if (dir * (r.top - r0.top) < 4) return;
+      const d = Math.abs(r.top - r0.top) * 4 + Math.abs(r.left - r0.left);
+      if (d < bd) { bd = d; best = i; }
+    });
+    if (best !== null) next = best;
+  }
+  if (next !== cur || document.activeElement !== gcards[cur]) { gcards[next].focus(); sfx.swap(); }
+}
+
 document.addEventListener('keydown', e => {
   if (e.altKey || e.ctrlKey || e.metaKey) return;
   const t = e.target;
   if (t.closest && t.closest('input, textarea, select, [contenteditable]')) return;
+  if (view === 'grid') { gridKey(e); return; }
   if (e.key === 'ArrowLeft')  { e.preventDefault(); go(active - 1); }
   else if (e.key === 'ArrowRight') { e.preventDefault(); go(active + 1); }
   // Enter na przycisku/linku robi to, co ten element; poza nimi uruchamia grę ze środka.
@@ -545,6 +811,35 @@ stage.addEventListener('touchend', e => {
   }
 }, { passive: true });
 
+// ---------- dołączanie kodem pokoju ----------
+const joinform = $('joinform'), joincode = $('joincode'), joinerr = $('joinerr'), joinpick = $('joinpick');
+joincode.addEventListener('input', () => {
+  const v = joincode.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+  if (v !== joincode.value) joincode.value = v;
+  joinerr.textContent = ''; joinpick.hidden = true;
+});
+joinform.addEventListener('submit', e => {
+  e.preventDefault();
+  const c = joincode.value.trim().toUpperCase();
+  if (!/^[A-Z0-9]{5}$/.test(c)) { joinerr.textContent = 'Kod pokoju ma 5 znaków.'; sfx.error(); joincode.focus(); return; }
+  const cur = GAMES[active].title;
+  joinpick.innerHTML = '<p>Do której gry należy kod <b>' + esc(c) + '</b>?</p>' +
+    JOIN.map((j, i) => `<button type="button" data-j="${i}"${view === 'carousel' && j.game === cur ? ' class="sug"' : ''}>${esc(j.name)}</button>`).join('');
+  joinpick.hidden = false;
+  sfx.swap();
+  const sug = joinpick.querySelector('.sug') || joinpick.querySelector('button');
+  if (sug) sug.focus();
+});
+joinpick.addEventListener('click', e => {
+  const b = e.target.closest('button[data-j]');
+  if (!b) return;
+  const c = joincode.value.trim().toUpperCase();
+  if (!/^[A-Z0-9]{5}$/.test(c)) return;
+  sfx.launch();
+  location.href = JOIN[+b.dataset.j].url(c);
+});
+
+setView(view, false);
 layout(false);
 </script>
 <script>
