@@ -201,6 +201,20 @@
   .seal.mini { width: 62%; transform: rotate(-8deg); }
   .seal.mini .seal-p { font-size: calc(var(--cw) * .1); }
 
+  /* miniatura Rozejrzyj się: złota litera w podwójnym okręgu, jak pieczęć z gry */
+  .lring {
+    position: relative; width: 58%; aspect-ratio: 1; display: grid; place-items: center; border-radius: 50%;
+    border: 1px solid rgba(201, 168, 92, .45);
+    background: radial-gradient(circle at 50% 40%, rgba(201, 168, 92, .12), transparent 70%);
+    box-shadow: 0 0 0 calc(var(--cw) * .018) #0F0E0B, 0 0 0 calc(var(--cw) * .021) rgba(201, 168, 92, .22), 0 0 30px rgba(201, 168, 92, .12);
+  }
+  .lring::before { content: ""; position: absolute; inset: 8%; border-radius: 50%; border: 1px solid rgba(201, 168, 92, .22); }
+  .lring b {
+    font: 600 calc(var(--cw) * .3)/1 var(--serif); padding-bottom: .08em;
+    background: linear-gradient(180deg, var(--gold-hi), var(--gold) 55%, #8A6A24); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+    filter: drop-shadow(0 0 10px rgba(233, 196, 106, .3));
+  }
+
   /* miniatura Miliona: drabinka kwot z podświetlonym szczeblem */
   .ladder { width: 64%; display: flex; flex-direction: column-reverse; gap: calc(var(--cw) * .014); }
   .ladder i {
@@ -373,13 +387,13 @@
 
 <script>
 // Lista gier – nowa gra = jedna linijka.
-// href: adres gry albo null (gra niedostępna); preview: 'board' | 'dossier' | 'seal'
+// href: adres gry albo null (gra niedostępna); preview: 'board' | 'dossier' | 'ladder' | 'letter' | 'seal'
 // img: plik miniatury w img/ – podmiana pliku na GitHubie zmienia miniaturę; brak pliku = miniatura z preview
 const GAMES = [
   { title: 'Tajniacy', label: 'Ściśle tajne',   href: '/tajniacy/', preview: 'board',   img: '/img/tajniacy.webp' },
   { title: 'Mafia',    label: 'Tajne role',     href: '/mafia/',    preview: 'dossier', img: '/img/mafia.webp'    },
   { title: 'Milionerzy', label: '12 pytań',       href: '/milion/',   preview: 'ladder',  img: '/img/milion.webp'   },
-  { title: 'Wkrótce',  label: 'Zapieczętowane', href: null,         preview: 'seal',    img: '/img/wkrotce.webp'  },
+  { title: 'Rozejrzyj się', label: 'W zasięgu wzroku', href: '/rozejrzyj/', preview: 'letter', img: '/img/rozejrzyj.webp' },
   { title: 'Wkrótce',  label: 'Zapieczętowane', href: null,         preview: 'seal',    img: '/img/wkrotce.webp'  },
 ];
 
@@ -392,6 +406,8 @@ const PREVIEWS = {
   // drabinka 12 kwot, podświetlony 7. szczebel (próg 40 000 zł)
   ladder: () => '<span class="ladder">' + Array.from({ length: 12 }, (_, i) => `<i class="${i === 6 ? 'on' : ''}${i === 11 ? ' top' : ''}"></i>`).join('') + '</span>',
   // wachlarz trzech tajnych kart roli, środkowa z pieczęcią mafii
+  // złota litera w okręgu (Rozejrzyj się)
+  letter: () => '<span class="lring"><b>R</b></span>',
   dossier: () => '<span class="dossier"><i class="dc l"></i><i class="dc r"></i><i class="dc m"><span class="seal mini"><span class="seal-p">M</span></span></i></span>',
 };
 
