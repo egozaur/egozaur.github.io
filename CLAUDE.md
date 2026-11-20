@@ -21,18 +21,20 @@ Project repos of the same GitHub account are served under the domain automatical
 
 Work happens on two machines: **macOS** (Python 3, Node, Chrome; no PowerShell) and **Windows** (no Node or Python; PowerShell 5.1, Edge). Check which one you are on and use the matching command below. To serve locally, run `python3 -m http.server 8088` in this folder on macOS, or a PowerShell `HttpListener` script (like the games' `dev/serve.ps1`) on Windows, and open the page via `http://localhost:…` rather than `file://`, because `crypto.subtle` needs a secure context.
 
-## Password gate: a lock for friends, NOT security
+## Password gate: hasło sprawdza serwer, sesja to token
 
-The site is static, so anyone who reads the source can bypass the gate, for example by setting localStorage by hand. It only keeps casual visitors out. Never put real secrets behind it.
+Od tej zmiany hasło NIE jest już w kodzie strony. Sprawdza je Worker `pl3y-server` (sekret Cloudflare `PL3Y_PASSWORD`) i oddaje token sesji podpisany HMAC-SHA256 (sekret `PL3Y_TOKEN_SECRET`). Worker wymaga tokena przy każdym zapytaniu `/api/*` i połączeniu WebSocket (zmienna `AUTH_MODE` w `mafia/worker/wrangler.toml`: `off` / `optional` / `required`). Sama strona nadal jest statyczna, więc bramka w przeglądarce ukrywa interfejs, a prawdziwą ochroną jest odmowa serwera bez tokena. Stary hash z historii repozytorium uznajemy za jawny: nowe hasło ma być długie i ustawione tylko w sekrecie.
 
-The contract is shared by the lobby and every game. Change it only together with all games.
+Kontrakt jest wspólny dla lobby i wszystkich gier. Zmieniaj go tylko razem z grami.
 
-- `localStorage.pl3y_auth` holds the SHA-256 (lowercase hex) of the correct password. It is written after a successful entry.
-- `localStorage.pl3y_last` holds the timestamp (ms, `Date.now()`) of the last activity.
-- The gate is shown when `pl3y_auth` is missing, when it differs from `PASS_HASH` in `auth.js` (that is, the password was changed), or when more than 30 minutes have passed since `pl3y_last`.
-- Activity (click, touch, key) refreshes `pl3y_last`, at most once every 30 s. Opening a page with a valid session also counts as activity.
-- The gate also checks on `visibilitychange` (tab shown again), on `pageshow`, and every 60 s, so after 30 minutes of inactivity it comes back by itself.
-- Only the SHA-256 hash of the password is stored in code (`PASS_HASH` in `auth.js`), never the plain text. The hash is plain SHA-256 of the UTF-8 password, with no salt or prefix.
-- To change the password, put the new hash into `PASS_HASH`. Everyone gets the gate again because `pl3y_auth` no longer matches.
-- Games include `<script src="/auth.js"></script>` early in `<head>`. Player pages opened from a QR code or room link (`mafia/play.html`, `milion/play.html`, `tajniacy/captain.html`; `rozejrzyj/` and `kurczacze/` have one page with the normal gate) are gated too, with `<script src="/auth.js" data-no-idle></script>`: there only `pl3y_auth` is checked (no 30-minute idle expiry, so the gate never pops up mid-game; a password change still locks them). On success `auth.js` dispatches `pl3y:unlock` on `document`. It exposes `window.PL3Y.isLocked()` and `window.PL3Y.lock()`.
-- While locked, page content is blurred and made `inert`, and clicks and keys outside the gate are swallowed in the capture phase.
+- `localStorage.pl3y_token` – token sesji (`dane.podpis`), `pl3y_token_exp` – koniec ważności (ms), `pl3y_token_kind` – rodzaj: `d` lobby/komputer (30 min), `p` telefon (12 h), `t` testowy (1 h).
+- `localStorage.pl3y_last` – znacznik czasu (ms) ostatniej aktywności.
+- Bramka wraca, gdy brak tokena, token wygasł, albo (poza stronami telefonów) minęło ponad 30 min od `pl3y_last`.
+- Logowanie: `POST {API}/api/auth/login` `{password, profile:'d'|'p'}` → `{token, exp, kind}`. Przedłużenie: `POST /api/auth/refresh` z `Authorization: Bearer …` (okno przesuwne; strona telefonu wysyła `profile:'p'` i awansuje token `d` do `p`). 429 = za dużo prób (8 na minutę z IP).
+- Aktywność (klik, dotyk, klawisz) odświeża `pl3y_last` (maks. co 30 s) i przedłuża token, gdy zostało mu mniej niż pół życia. Sprawdzenie także na `visibilitychange`, `pageshow` i co 60 s; strony telefonów przedłużają token same co minutę.
+- Gry czytają token z `localStorage.pl3y_token` (albo `window.PL3Y.token()`), wysyłają go nagłówkiem `Authorization: Bearer …` (fetch) lub `?tok=…` (WebSocket). Odpowiedź 401 → `window.PL3Y.expired()` pokazuje bramkę.
+- Strony graczy z QR (`mafia/play.html`, `milion/play.html`, `tajniacy/captain.html`) ładują `<script src="/auth.js" data-no-idle></script>`: token 12 h, bez wygasania po bezczynności. `rozejrzyj/` i `kurczacze/` mają jedną stronę ze zwykłą bramką.
+- Po sukcesie `auth.js` wysyła `pl3y:unlock` na `document`. Udostępnia `window.PL3Y` (`isLocked`, `lock`, `token`, `refresh`, `expired`).
+- Zmiana hasła: `wrangler secret put PL3Y_PASSWORD` (istniejące tokeny dalej działają do wygaśnięcia). Natychmiastowe wylogowanie wszystkich: zmień `PL3Y_TOKEN_SECRET`.
+- Testy E2E na prawdziwym serwerze z localhost (`?server=prod&testkey=<PL3Y_TEST_SECRET>`): sekret testowy wymieniany jest na token `t`, z którym Worker przepuszcza Origin `http://localhost`. `ALLOW_LOCALHOST` na produkcji jest `"false"`.
+- `robots.txt` (`Disallow: /`) i `<meta name="robots" content="noindex, nofollow">` na stronach gier i lobby.

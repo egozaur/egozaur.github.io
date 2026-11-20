@@ -1,30 +1,38 @@
 /*
  * PL3Y – wspólna bramka hasła dla całej domeny pl3y.pl (lobby i gry).
  *
- * UWAGA: to zamek dla znajomych, NIE prawdziwe zabezpieczenie. Strona jest
- * statyczna, więc każdy, kto zajrzy w kod, może bramkę obejść.
+ * Hasło sprawdza SERWER (Worker pl3y-server, sekret PL3Y_PASSWORD) i oddaje token sesji podpisany HMAC.
+ * Token jest potem wymagany przez Worker przy każdym zapytaniu i połączeniu (tryb AUTH_MODE="required").
+ * Sama strona nadal jest statyczna, więc bramka na stronie to tylko wygoda (ukrywa interfejs); prawdziwą
+ * ochroną jest odmowa serwera bez ważnego tokena.
  *
  * Kontrakt (opisany też w CLAUDE.md – nie zmieniaj bez aktualizacji gier):
- *   localStorage "pl3y_auth" = SHA-256 (hex) poprawnego hasła,
- *   localStorage "pl3y_last" = znacznik czasu (ms) ostatniej aktywności.
- *   Bramka wraca, gdy: brak pl3y_auth, pl3y_auth ≠ PASS_HASH (zmiana hasła)
- *   albo od pl3y_last minęło ponad 30 min.
- *   Aktywność (klik, dotyk, klawisz) odświeża pl3y_last maks. raz na 30 s.
- *   Sprawdzenie także przy powrocie do karty (visibilitychange) i co minutę.
+ *   localStorage "pl3y_token"      = token sesji (tekst "dane.podpis"),
+ *   localStorage "pl3y_token_exp"  = koniec ważności tokena (ms),
+ *   localStorage "pl3y_token_kind" = rodzaj: "d" lobby/komputer (30 min), "p" telefon (12 h), "t" testowy (1 h),
+ *   localStorage "pl3y_last"       = znacznik czasu (ms) ostatniej aktywności.
+ *   Bramka wraca, gdy: brak tokena, token wygasł, albo (poza stronami telefonów) od pl3y_last minęło ponad 30 min.
+ *   Aktywność (klik, dotyk, klawisz) odświeża pl3y_last maks. raz na 30 s i przedłuża token (POST /api/auth/refresh),
+ *   gdy zostało mu mniej niż pół życia. Sprawdzenie także przy powrocie do karty (visibilitychange) i co minutę.
  *
  * Użycie w grze: <script src="/auth.js"></script> w <head> (bez defer).
  * Strony graczy (telefony z QR): <script src="/auth.js" data-no-idle></script>
- *   – liczy się tylko pl3y_auth, bez 30-min wygasania.
+ *   – token na 12 h (profil "p"), bez wygasania po bezczynności; token „d” z lobby awansuje do „p” sam.
+ * Gry czytają token z localStorage (pl3y_token) albo przez PL3Y.token(); wysyłają go jako
+ *   nagłówek "Authorization: Bearer …" (fetch) lub parametr ?tok=… (WebSocket).
  * Po wpisaniu hasła na document leci zdarzenie "pl3y:unlock".
  */
 (function () {
   'use strict';
 
-  // Skrót SHA-256 (hex) hasła – NIGDY nie wpisuj tu jawnego hasła.
-  var PASS_HASH = '378fb5e997833a16bb5ded5e2cef2b6646cb7c88a3dbe1a4956c4b02b40deb8c';
+  // Adres wspólnego serwera PL3Y. Hasła tu nie ma: sprawdza je Worker.
+  var API = 'https://pl3y-server.pl3y.workers.dev';
 
-  var K_AUTH = 'pl3y_auth';
+  var K_TOKEN = 'pl3y_token';
+  var K_EXP = 'pl3y_token_exp';
+  var K_KIND = 'pl3y_token_kind';
   var K_LAST = 'pl3y_last';
+  var LIFE = { d: 30 * 60 * 1000, p: 12 * 60 * 60 * 1000, t: 60 * 60 * 1000 };   // czas życia tokena wg rodzaju
   var IDLE_MS = 30 * 60 * 1000;   // po tylu ms bezczynności bramka wraca
   var TOUCH_MS = 30 * 1000;       // pl3y_last odświeżamy najwyżej tak często
   var TICK_MS = 60 * 1000;        // okresowe sprawdzanie
@@ -42,8 +50,18 @@
     try { localStorage.setItem(k, String(v)); } catch (e) { /* trudno */ }
   }
 
+  function drop(k) {
+    delete mem[k];
+    try { localStorage.removeItem(k); } catch (e) { /* trudno */ }
+  }
+
+  // Ważny token: jest i nie wygasł. Szczegółów (podpis) pilnuje serwer.
+  function tokenOk() {
+    return !!get(K_TOKEN) && Number(get(K_EXP)) > Date.now();
+  }
+
   function valid() {
-    if (get(K_AUTH) !== PASS_HASH) return false;
+    if (!tokenOk()) return false;
     if (NO_IDLE) return true;
     var last = Number(get(K_LAST));
     var age = Date.now() - last;
@@ -120,12 +138,49 @@
     }
   }
 
-  function sha256(text) {
-    return crypto.subtle.digest('SHA-256', new TextEncoder().encode(text)).then(function (buf) {
-      return Array.prototype.map.call(new Uint8Array(buf), function (b) {
-        return ('0' + b.toString(16)).slice(-2);
-      }).join('');
-    });
+  function save(r) {
+    put(K_TOKEN, r.token);
+    put(K_EXP, r.exp);
+    put(K_KIND, r.kind);
+  }
+
+  // Wymiana hasła na token. Zwraca obietnicę: { ok } albo { err } (komunikat po polsku).
+  function signIn(password) {
+    return fetch(API + '/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: password, profile: NO_IDLE ? 'p' : 'd' })
+    }).then(function (res) {
+      if (res.status === 429) return { err: 'Za dużo prób. Poczekaj chwilę' };
+      return res.json().then(function (j) {
+        if (res.ok && j && j.token) { save(j); return { ok: true }; }
+        if (res.status === 401) return { err: 'Złe hasło' };
+        return { err: 'Serwer niedostępny' };
+      }, function () { return { err: 'Serwer niedostępny' }; });
+    }, function () { return { err: 'Brak połączenia z serwerem' }; });
+  }
+
+  // Przedłużenie tokena (okno przesuwne). Telefony (data-no-idle) przy okazji awansują token „d” do „p”.
+  var refreshing = null;
+  function refreshToken() {
+    if (refreshing || !tokenOk()) return refreshing || Promise.resolve(false);
+    refreshing = fetch(API + '/api/auth/refresh', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + get(K_TOKEN) },
+      body: JSON.stringify({ profile: NO_IDLE ? 'p' : 'd' })
+    }).then(function (res) {
+      if (res.status === 401) { drop(K_TOKEN); drop(K_EXP); drop(K_KIND); lock(); return false; }   // serwer nie uznaje sesji
+      return res.json().then(function (j) { if (res.ok && j && j.token) { save(j); return true; } return false; });
+    }, function () { return false; }).then(function (ok) { refreshing = null; return ok; });
+    return refreshing;
+  }
+
+  // Czy token wymaga przedłużenia: została mniej niż połowa życia, albo telefon trzyma krótki token „d”.
+  function wantsRefresh() {
+    if (!tokenOk()) return false;
+    var kind = get(K_KIND) || 'd';
+    if (NO_IDLE && kind === 'd') return true;
+    return Number(get(K_EXP)) - Date.now() < (LIFE[kind] || LIFE.d) / 2;
   }
 
   function build() {
@@ -152,6 +207,7 @@
     var form = gate.querySelector('form');
     var input = gate.querySelector('input');
     var err = gate.querySelector('.pg-err');
+    var btn = gate.querySelector('.pg-btn');
 
     function fail(msg) {
       err.textContent = msg;
@@ -172,13 +228,11 @@
       e.preventDefault();
       var v = input.value;
       if (!v) { fail(''); return; }
-      if (!(window.crypto && crypto.subtle && window.TextEncoder)) {
-        fail('Wymagane połączenie HTTPS');
-        return;
-      }
-      sha256(v).then(function (h) {
-        if (h === PASS_HASH) unlock();
-        else fail('Złe hasło');
+      btn.disabled = true;
+      signIn(v).then(function (r) {
+        btn.disabled = false;
+        if (r.ok) unlock();
+        else fail(r.err);
       });
     });
 
@@ -193,7 +247,6 @@
   }
 
   function unlock() {
-    put(K_AUTH, PASS_HASH);
     put(K_LAST, Date.now());
     locked = false;
     setInert(false);
@@ -211,7 +264,10 @@
   function guard(e) {
     if (!locked) {
       if (!valid()) lock();
-      else if (Date.now() - Number(get(K_LAST)) >= TOUCH_MS) put(K_LAST, Date.now());
+      else {
+        if (Date.now() - Number(get(K_LAST)) >= TOUCH_MS) put(K_LAST, Date.now());
+        if (wantsRefresh()) refreshToken();
+      }
     }
     if (locked && !(gate && gate.contains(e.target))) {
       if (e.cancelable) e.preventDefault();
@@ -222,19 +278,33 @@
     window.addEventListener(t, guard, { capture: true, passive: false });
   });
 
-  document.addEventListener('visibilitychange', function () { if (!document.hidden) check(); });
+  document.addEventListener('visibilitychange', function () {
+    if (document.hidden) return;
+    check();
+    if (!locked && NO_IDLE && wantsRefresh()) refreshToken();
+  });
   window.addEventListener('pageshow', check);            // powrót przyciskiem „Wstecz”
   window.addEventListener('storage', function () {       // hasło wpisane w innej karcie
     if (locked && valid()) unlock();
   });
-  setInterval(check, TICK_MS);
+  // Co minutę: sprawdzenie sesji; telefony (bez bezczynności) przedłużają token same, bo mogą nie dotykać ekranu godzinami.
+  setInterval(function () {
+    check();
+    if (!locked && NO_IDLE && wantsRefresh()) refreshToken();
+  }, TICK_MS);
 
   // Start: wejście na stronę z ważną sesją liczy się jako aktywność.
-  if (valid()) put(K_LAST, Date.now());
+  if (valid()) { put(K_LAST, Date.now()); if (wantsRefresh()) refreshToken(); }
   else lock();
 
   window.PL3Y = {
     isLocked: function () { return locked; },
-    lock: lock
+    lock: lock,
+    // Ważny token do wysłania na serwer ('' gdy brak/wygasł).
+    token: function () { return tokenOk() ? get(K_TOKEN) : ''; },
+    // Wymusza przedłużenie i oddaje token (do ponowienia zapytania po odpowiedzi 401).
+    refresh: function () { return refreshToken().then(function () { return tokenOk() ? get(K_TOKEN) : ''; }); },
+    // Serwer odrzucił token (401): usuń go i pokaż bramkę.
+    expired: function () { drop(K_TOKEN); drop(K_EXP); drop(K_KIND); lock(); }
   };
 })();

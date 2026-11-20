@@ -1,0 +1,3 @@
+# PL3Y to prywatna zabawa dla znajomych, nie indeksujemy.
+User-agent: *
+Disallow: /
