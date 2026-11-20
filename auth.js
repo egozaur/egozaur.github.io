@@ -13,6 +13,8 @@
  *   Sprawdzenie także przy powrocie do karty (visibilitychange) i co minutę.
  *
  * Użycie w grze: <script src="/auth.js"></script> w <head> (bez defer).
+ * Strony graczy (telefony z QR): <script src="/auth.js" data-no-idle></script>
+ *   – liczy się tylko pl3y_auth, bez 30-min wygasania.
  * Po wpisaniu hasła na document leci zdarzenie "pl3y:unlock".
  */
 (function () {
@@ -26,6 +28,9 @@
   var IDLE_MS = 30 * 60 * 1000;   // po tylu ms bezczynności bramka wraca
   var TOUCH_MS = 30 * 1000;       // pl3y_last odświeżamy najwyżej tak często
   var TICK_MS = 60 * 1000;        // okresowe sprawdzanie
+  // <script src="/auth.js" data-no-idle> – strony graczy: bez wygasania po bezczynności,
+  // żeby bramka nie wyskoczyła w trakcie partii (zmiana hasła nadal wylogowuje).
+  var NO_IDLE = !!(document.currentScript && document.currentScript.hasAttribute('data-no-idle'));
 
   // localStorage bywa niedostępny (tryb prywatny) – wtedy pamięć tylko na tę stronę.
   var mem = {};
@@ -39,6 +44,7 @@
 
   function valid() {
     if (get(K_AUTH) !== PASS_HASH) return false;
+    if (NO_IDLE) return true;
     var last = Number(get(K_LAST));
     var age = Date.now() - last;
     return last > 0 && age >= -TICK_MS && age <= IDLE_MS;
