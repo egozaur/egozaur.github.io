@@ -121,6 +121,7 @@
       border-color var(--dur) var(--ease),
       box-shadow var(--dur) var(--ease),
       visibility 0s linear 0s;
+    will-change: transform, opacity;
     -webkit-tap-highlight-color: transparent;
   }
   .card[data-pos="1"] { filter: brightness(.62) saturate(.5); }
@@ -325,7 +326,7 @@
   .scanbox { position: relative; width: min(86vw, 420px); aspect-ratio: 1; border-radius: 18px; overflow: hidden; background: #000; }
   .scanbox video { width: 100%; height: 100%; object-fit: cover; display: block; }
   .scanframe { position: absolute; inset: 14%; border: 2px solid var(--gold); border-radius: 14px; box-shadow: 0 0 0 100vmax rgba(0, 0, 0, .35); }
-  .scanmsg { margin: 0; max-width: 420px; text-align: center; color: var(--text); font-size: 15px; line-height: 1.45; min-height: 2.9em; }
+  .scanmsg { margin: 0; max-width: 420px; text-align: center; color: var(--text); font-size: 15px; line-height: 1.45; min-height: 4.4em; }
   .scanclose {
     height: 46px; padding: 0 28px; border-radius: 999px; cursor: pointer;
     background: var(--gold); color: var(--bg); border: 0; font: 600 13px/1 var(--mono); letter-spacing: .2em; text-transform: uppercase;
@@ -365,9 +366,21 @@
   .desc {
     margin: 0 0 18px; padding: 0 24px; max-width: 460px; min-height: 2.9em;
     text-align: center; font: 400 15px/1.45 var(--sans); color: var(--muted);
-    transition: opacity .2s;
+    }
+  .desc { max-width: 520px; display: grid; min-height: 0; contain: layout paint; }
+  .b-item {
+    grid-area: 1 / 1; align-self: start; opacity: 0; visibility: hidden;
+    transition: opacity .25s ease, visibility 0s linear .25s;
   }
-  .desc.swap { opacity: 0; }
+  .b-item.on { opacity: 1; visibility: visible; transition: opacity .3s ease .12s, visibility 0s; }
+  .b-item .gnote { margin: 12px auto 0; width: fit-content; max-width: 100%; }
+  .b-lead { display: block; color: var(--text, #EDE6D6); }
+  .b-facts {
+    display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; margin: 14px 0 0; padding: 12px 0 0;
+    border-top: 1px solid rgba(201, 168, 92, .22); text-align: left; font-size: 13.5px; line-height: 1.4;
+  }
+  .b-facts dt { color: var(--gold); font: 600 10.5px/1.9 var(--sans); letter-spacing: .14em; text-transform: uppercase; white-space: nowrap; }
+  .b-facts dd { margin: 0; color: var(--muted); }
   .note, .gnote {
     display: flex; gap: 8px; align-items: flex-start; text-align: left;
     font: 500 12.5px/1.4 var(--sans); color: var(--gold-hi);
@@ -405,6 +418,22 @@
   .gcard .card-title { font-size: 26px; }
   .gcard .gdesc { font: 400 13.5px/1.45 var(--sans); color: var(--muted); }
   .gcard.go { transform: scale(1.05); opacity: 0; }
+
+  /* ---------- przejście karuzela ⇄ siatka: taśma filmowa ---------- */
+  .reel {
+    position: fixed; z-index: 1; pointer-events: none; border-radius: 6px;
+    background: #0A0907; border: 1px solid rgba(201, 168, 92, .35);
+    box-shadow: 0 20px 50px -20px rgba(0, 0, 0, .8);
+  }
+  .reel[hidden] { display: none; }
+  .reel::before, .reel::after {
+    content: ""; position: absolute; left: 8px; right: 8px; height: 6px; border-radius: 2px;
+    background: repeating-linear-gradient(90deg, rgba(201, 168, 92, .5) 0 8px, transparent 8px 16px);
+  }
+  .reel::before { top: 6px; }
+  .reel::after { bottom: 6px; }
+  body.animating { overflow-x: hidden; }
+  body.animating .gcard { position: relative; z-index: 2; pointer-events: none; transition: none; transform-origin: 0 0; }
   body.leaving .card.is-active { --s: 1.14 !important; }
 
   /* ---------- dołączanie kodem pokoju ---------- */
@@ -492,8 +521,7 @@
   <section class="stage" id="stage" aria-roledescription="karuzela" aria-label="Gry">
     <div class="track" id="track"></div>
   </section>
-  <p class="desc" id="desc"></p>
-  <p class="note" id="note" hidden></p>
+  <div class="desc" id="desc"></div>
 
   <div class="controls">
     <button class="arrow" id="prev" type="button" aria-label="Poprzednia gra">
@@ -507,6 +535,7 @@
 
   <section class="grid" id="grid" aria-label="Wszystkie gry" hidden></section>
 
+  <div class="reel" id="reel" hidden aria-hidden="true"></div>
   <div class="dots" id="dots" role="group" aria-label="Wybór gry"></div>
   <p class="sr" id="live" aria-live="polite"></p>
   <div class="scanrow"><button class="scan" id="scan" type="button" hidden>📷 Skanuj kod QR</button></div>
@@ -537,19 +566,39 @@
 // img: plik miniatury w img/ – podmiana pliku na GitHubie zmienia miniaturę; brak pliku = miniatura z preview
 const GAMES = [
   { title: 'Tajniacy', label: 'Ściśle tajne',   href: '/tajniacy/', preview: 'board',   img: '/img/tajniacy.webp',
-    desc: 'Dwie drużyny, kapitanowie i hasła. Znajdź swoje słowa i omiń zabójcę.', accent: '#4F7FC0',
+    desc: 'Odkrywaj hasła, odczytuj wskazówki i wyeliminuj agentów przeciwnika.', accent: '#4F7FC0',
+    brief: { lead: 'Odkrywaj hasła, odczytuj wskazówki i wyeliminuj agentów przeciwnika, zanim zrobi to druga drużyna.',
+      mode: '2 drużyny', mech: 'Skojarzenia i dedukcja', req: 'Kod QR operatora', goal: 'Odkryj wszystkich swoich agentów i uniknij zabójcy.' },
     note: 'W tej grze musisz zeskanować kod QR aparatem. Kod jest ściśle strzeżony!' },
   { title: 'Mafia',    label: 'Tajne role',     href: '/mafia/',    preview: 'dossier', img: '/img/mafia.webp',
-    desc: 'Tajne role, noc i głosowanie. Znajdźcie mafię, zanim ona znajdzie was.', accent: '#C4503F' },
+    desc: 'Kłam, blefuj i analizuj zachowania innych. Mafia ukrywa się wśród mieszkańców.', accent: '#C4503F',
+    brief: { lead: 'Kłam, blefuj i analizuj zachowania innych. Wśród mieszkańców miasta ukrywają się członkowie mafii.',
+      mode: 'Wieloosobowy', mech: 'Tajne role, dyskusja i głosowanie', goal: 'Mafia eliminuje mieszkańców, a mieszkańcy próbują odkryć mafię.' } },
   { title: 'Milionerzy', label: '12 pytań',       href: '/milion/',   preview: 'ladder',  img: '/img/milion.webp',
-    desc: '12 pytań do miliona i koła ratunkowe. Grasz solo albo z telefonami.', accent: '#D9B456' },
+    desc: '12 pytań, rosnąca stawka i koła ratunkowe. Sprawdź, jak daleko zaprowadzi Cię wiedza.', accent: '#D9B456',
+    brief: { lead: '12 pytań, rosnąca stawka i koła ratunkowe. Sprawdź, jak daleko zaprowadzi Cię Twoja wiedza.',
+      mode: 'Solo lub wspólnie', mech: 'Quiz wielokrotnego wyboru', play: '12 pytań', goal: 'Odpowiedz poprawnie na pytania i zdobądź milion.' } },
   { title: 'Rozejrzyj się', label: 'W zasięgu wzroku', href: '/rozejrzyj/', preview: 'letter', img: '/img/rozejrzyj.webp',
-    desc: 'Jedna litera, jeden komputer. Wymieniaj rzeczy, które widzisz wokół.', accent: '#5E9E86' },
+    desc: 'Jedna litera, jeden komputer. Znajdź przedmioty zaczynające się na tę literę.', accent: '#5E9E86',
+    brief: { lead: 'Jedna litera, jeden komputer i otaczający Cię świat. Znajdź przedmioty, których nazwy zaczynają się na wskazaną literę.',
+      mech: 'Obserwacja i spostrzegawczość', goal: 'Wymień jak najwięcej pasujących przedmiotów.' } },
   { title: 'Kurczacze Imperium', label: 'Pojedynek kurników', href: '/kurczacze/', preview: 'pyramid', img: '/img/kurczacze.webp',
-    desc: 'Pojedynek dwóch graczy: dobieraj karty i buduj najlepsze imperium kurników.', accent: '#E8B83A' },
+    desc: 'Zbieraj karty, rozwijaj strategię i zbuduj imperium silniejsze od przeciwnika.', accent: '#E8B83A',
+    brief: { lead: 'Zbieraj karty, rozwijaj swoją strategię i buduj imperium silniejsze od przeciwnika.',
+      players: '2', mode: 'Pojedynek 1 vs 1', mech: 'Dobieranie kart i budowanie talii', goal: 'Zbuduj najlepsze imperium i pokonaj przeciwnika.' } },
   { title: 'Wkrótce',  label: 'Zapieczętowane', href: null,         preview: 'seal',    img: '/img/wkrotce.webp',
-    desc: 'Zapieczętowana. Nowa gra pojawi się tu już wkrótce.', accent: '#B9463B' },
+    desc: 'Nowa rozgrywka jest w przygotowaniu. Szczegóły pozostają tajemnicą.', accent: '#B9463B',
+    brief: { lead: 'Nowa rozgrywka jest w przygotowaniu. Szczegóły pozostają tajemnicą.' } },
 ];
+
+// PL3Y GAME BRIEF – jeden standard opisu gry. Pola opcjonalne: pole bez wartości się nie pokazuje.
+// lead: 1–2 zdania; players, time, mode, mech, play, req, goal: dane faktyczne (nie wymyślamy brakujących).
+const BRIEF_FIELDS = [['players', 'Gracze'], ['time', 'Czas'], ['mode', 'Tryb'], ['play', 'Rozgrywka'], ['mech', 'Mechanika'], ['req', 'Wymagania'], ['goal', 'Cel']];
+function briefHTML(g, full) {
+  const b = g.brief || { lead: g.desc || '' };
+  const rows = full ? BRIEF_FIELDS.filter(([k]) => b[k]).map(([k, l]) => `<dt>${l}</dt><dd>${esc(b[k])}</dd>`).join('') : '';
+  return `<span class="b-lead">${esc(b.lead)}</span>${rows ? `<dl class="b-facts">${rows}</dl>` : ''}`;
+}
 
 // Dołączanie kodem pokoju: każda gra ma własną przestrzeń kodów i własny format linku, więc gracz wskazuje grę.
 const JOIN = [
@@ -582,8 +631,10 @@ const $ = id => document.getElementById(id);
 const stage = $('stage'), track = $('track'), cta = $('cta'), dots = $('dots'), live = $('live');
 const n = GAMES.length;
 let active = 0;
-const descEl = $('desc'), noteEl = $('note');
-let descT = 0;
+const descEl = $('desc');
+// wszystkie briefy leżą w jednej komórce gridu: blok ma wysokość najwyższego, więc zmiana gry nie przesuwa układu
+descEl.innerHTML = GAMES.map(g => `<div class="b-item">${briefHTML(g, true)}${g.note ? `<span class="gnote">${esc(g.note)}</span>` : ''}</div>`).join('');
+const briefEls = [...descEl.children];
 
 // Położenie kart bocznych (wielokrotność szerokości karty), skala i przezroczystość wg odległości od środka.
 const SHIFT = [0, .78, 1.32, 1.7];
@@ -663,9 +714,109 @@ function setView(v, save) {
   viewbtn.setAttribute('aria-label', v === 'grid' ? 'Wróć do karuzeli' : 'Pokaż wszystkie gry (siatka)');
   if (save) store.set('pl3y_view', v);
 }
+// Przejście: karuzela zwija się w taśmę filmową, taśma rozwija się w kafelki siatki (i odwrotnie).
+// Tylko transform i opacity (Web Animations API), więc animacja idzie na GPU.
+const reel = $('reel');
+let viewBusy = false;
+const T_APPEAR = 220, T_STAG = 55, T_FLY = 620, T_HOLD = 120, T_OUT = 170;
+const FLY_EASE = 'cubic-bezier(.22,.8,.2,1)', FOLD_EASE = 'cubic-bezier(.6,0,.3,1)';
+const fin = a => a.finished.catch(() => {});
+
+// Ułożenie klatek w taśmie (współrzędne okna): lewy górny róg i skala każdego kafelka.
+function stripFrames() {
+  const vw = innerWidth, n = gcards.length, gap = vw < 520 ? 6 : 10;
+  const fw = Math.min(92, (vw - 48 - (n - 1) * gap) / n);
+  const x0 = (vw - (n * fw + (n - 1) * gap)) / 2;
+  const rects = gcards.map(c => c.getBoundingClientRect());
+  const scales = rects.map(r => fw / r.width);
+  const H = Math.max(...rects.map((r, i) => r.height * scales[i]));
+  const top = innerHeight * .42 - H / 2;
+  reel.style.left = (x0 - 14) + 'px';
+  reel.style.width = (n * fw + (n - 1) * gap + 28) + 'px';
+  reel.style.top = (top - 18) + 'px';
+  reel.style.height = (H + 36) + 'px';
+  return rects.map((r, i) => `translate(${x0 + i * (fw + gap) - r.left}px, ${top - r.top}px) scale(${scales[i]})`);
+}
+
+const carouselParts = () => [document.querySelector('.stage'), document.querySelector('.controls'), dots, descEl];
+const clearAnims = () => { [...gcards, reel, ...carouselParts()].forEach(e => e.getAnimations().forEach(a => a.cancel())); };
+
+async function morphView(to) {
+  if (viewBusy) return;
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) { setView(to, true); return; }
+  viewBusy = true;
+  document.body.classList.add('animating');
+  try {
+    const n = gcards.length;
+    if (to === 'grid') {
+      // 1. karuzela znika
+      await Promise.all(carouselParts().map(e => fin(e.animate(
+        [{ opacity: 1, transform: 'scale(1)' }, { opacity: 0, transform: 'scale(.94)' }],
+        { duration: 200, easing: 'ease-in', fill: 'forwards' }))));
+      setView('grid', true);
+      clearAnims();
+      // 2. klatki pojawiają się w taśmie, potem rozwijają się na swoje miejsca w siatce
+      const strips = stripFrames();
+      const T = T_APPEAR + (n - 1) * T_STAG + T_FLY;
+      reel.hidden = false;
+      reel.animate([
+        { opacity: 0, transform: 'scaleX(.7)' },
+        { opacity: 1, transform: 'scaleX(1)', offset: T_APPEAR / T },
+        { opacity: 1, transform: 'scaleX(1)', offset: (T_APPEAR + T_FLY * .35) / T },
+        { opacity: 0, transform: 'scaleX(1)' }
+      ], { duration: T, easing: 'ease-out' });
+      await Promise.all(gcards.map((c, i) => {
+        const leave = T_APPEAR + i * T_STAG;
+        return fin(c.animate([
+          { transform: strips[i], opacity: 0, easing: 'ease-out' },
+          { transform: strips[i], opacity: 1, offset: T_APPEAR / T },
+          { transform: strips[i], opacity: 1, offset: leave / T, easing: FLY_EASE },
+          { transform: 'none', opacity: 1, offset: (leave + T_FLY) / T },
+          { transform: 'none', opacity: 1 }
+        ], { duration: T }));
+      }));
+      reel.hidden = true;
+    } else {
+      // 1. kafelki zwijają się w taśmę
+      const strips = stripFrames();
+      const T = (n - 1) * T_STAG + T_FLY + T_HOLD + T_OUT;
+      reel.hidden = false;
+      reel.animate([
+        { opacity: 0, transform: 'scaleX(.7)' },
+        { opacity: 1, transform: 'scaleX(1)', offset: T_FLY * .6 / T },
+        { opacity: 1, transform: 'scaleX(1)', offset: (T - T_OUT) / T },
+        { opacity: 0, transform: 'scaleX(1)' }
+      ], { duration: T, easing: 'ease-out' });
+      await Promise.all(gcards.map((c, i) => {
+        const start = i * T_STAG;
+        return fin(c.animate([
+          { transform: 'none', opacity: 1, easing: FOLD_EASE },
+          { transform: 'none', opacity: 1, offset: start / T, easing: FOLD_EASE },
+          { transform: strips[i], opacity: 1, offset: (start + T_FLY) / T },
+          { transform: strips[i], opacity: 1, offset: (T - T_OUT) / T },
+          { transform: strips[i], opacity: 0 }
+        ], { duration: T, fill: 'forwards' }));
+      }));
+      reel.hidden = true;
+      // 2. taśma znika, wchodzi karuzela
+      setView('carousel', true);
+      clearAnims();
+      await Promise.all(carouselParts().map(e => fin(e.animate(
+        [{ opacity: 0, transform: 'scale(.94)' }, { opacity: 1, transform: 'scale(1)' }],
+        { duration: 320, easing: FLY_EASE }))));
+    }
+  } finally {
+    clearAnims();
+    reel.hidden = true;
+    document.body.classList.remove('animating');
+    viewBusy = false;
+  }
+}
+
 viewbtn.addEventListener('click', e => {
+  if (viewBusy) return;
   sfx.swap();
-  setView(view === 'grid' ? 'carousel' : 'grid', true);
+  morphView(view === 'grid' ? 'carousel' : 'grid');
   dropFocus(e);
 });
 
@@ -694,14 +845,7 @@ function layout(announce) {
 
   const g = GAMES[active];
   document.body.style.setProperty('--accent', g.accent || '#C9A85C');
-  noteEl.textContent = g.note || '';
-  noteEl.hidden = !g.note;
-  if (descEl.textContent !== (g.desc || '')) {
-    descEl.classList.add('swap');
-    clearTimeout(descT);
-    descT = setTimeout(() => { descEl.textContent = g.desc || ''; descEl.classList.remove('swap'); }, announce ? 130 : 0);
-    if (!announce) { descEl.textContent = g.desc || ''; descEl.classList.remove('swap'); }
-  }
+  briefEls.forEach((el, i) => el.classList.toggle('on', i === active));
   cta.innerHTML = g.href
     ? `<a class="play" href="${esc(g.href)}">Graj <span class="arr" aria-hidden="true">→</span></a>`
     : '<span class="soon-badge">Wkrótce</span>';
