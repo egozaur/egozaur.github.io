@@ -880,6 +880,15 @@ track.addEventListener('click', e => {
   const i = +card.dataset.i;
   if (i === active) launch(); else go(i);
 });
+// Klik w puste pole sceny po lewej/prawej od środkowego kafelka przesuwa karuzelę o jeden.
+stage.addEventListener('click', e => {
+  if (swiped || e.target.closest('.card')) return;
+  const r = gcenter();
+  if (!r) return;
+  if (e.clientX < r.left) go(active - 1);
+  else if (e.clientX > r.right) go(active + 1);
+});
+function gcenter() { const c = cards[active]; return c ? c.getBoundingClientRect() : null; }
 grid.addEventListener('click', e => {
   const c = e.target.closest('.gcard');
   if (!c) return;
