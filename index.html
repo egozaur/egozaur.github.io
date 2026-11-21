@@ -33,12 +33,15 @@
     --sans: Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
     --ease: cubic-bezier(.22, .8, .24, 1);
     --dur: .6s;
-    /* szerokość aktywnej karty: ~360 px na dużym ekranie, ~250 px na telefonie */
-    --cw: clamp(190px, min(66vw, calc((100vh - 290px) * .72)), 360px);
+    /* szerokość aktywnej karty: ~360 px na dużym ekranie, mniej na niskich oknach.
+       --reserve = wysokość wszystkiego poza kartą (logo, opis, tabelka, przyciski, kropki, pole kodu),
+       żeby całe lobby mieściło się w oknie bez przewijania (sprawdzane skryptem pomiaru na typowych ekranach). */
+    --reserve: 665px;
+    --cw: clamp(150px, min(66vw, calc((100vh - var(--reserve)) * .72)), 360px);
     --ch: calc(var(--cw) * 1.39);
   }
   @supports (height: 100svh) {
-    :root { --cw: clamp(190px, min(66vw, calc((100svh - 290px) * .72)), 360px); }
+    :root { --cw: clamp(150px, min(66vw, calc((100svh - var(--reserve)) * .72)), 360px); }
   }
 
   * { box-sizing: border-box; }
@@ -154,7 +157,9 @@
     display: flex; justify-content: space-between; align-items: baseline; gap: 10px;
     font: 500 max(9.5px, calc(var(--cw) * .03))/1 var(--mono);
     letter-spacing: .22em; text-transform: uppercase;
+    white-space: nowrap; min-width: 0;
   }
+  .card-top > * { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
   .card-no { color: var(--muted); }
   .card-tag { color: var(--gold); text-align: right; }
   .card-art { flex: 1; display: grid; place-items: center; min-height: 0; }
@@ -404,6 +409,13 @@
     padding: 8px 12px;
   }
   .note { margin: -6px 24px 16px; max-width: 420px; }
+  /* „Szczegóły”: na niskich ekranach tabelka i ramka z uwagą są zwinięte (patrz @media max-height: 820px) */
+  .more {
+    display: none; margin: -8px auto 14px; padding: 6px 14px; border-radius: 999px; cursor: pointer;
+    background: none; border: 1px solid rgba(201, 168, 92, .3); color: var(--muted);
+    font: 500 11px/1 var(--mono); letter-spacing: .18em; text-transform: uppercase;
+  }
+  .more:hover { color: var(--gold-hi); border-color: var(--gold); }
   .note[hidden] { display: none; }
   .note::before, .gnote::before { content: "🔒"; flex: none; }
 
@@ -417,7 +429,8 @@
   body[data-view="grid"] .controls,
   body[data-view="grid"] .dots,
   body[data-view="grid"] .desc,
-  body[data-view="grid"] .note { display: none; }
+  body[data-view="grid"] .note,
+  body[data-view="grid"] .more { display: none !important; }
   .gcard {
     --cw: 170px;
     display: flex; flex-direction: column; gap: 10px; text-align: left; cursor: pointer;
@@ -494,10 +507,22 @@
     .cta { width: 152px; }
     .play, .soon-badge { height: 48px; font-size: 12px; }
   }
+  /* Niskie okna (laptopy, mniejsze telefony): zwinięte szczegóły i ciaśniejsze odstępy, żeby nie trzeba było przewijać. */
+  @media (max-height: 960px), (max-width: 520px) {
+    :root { --reserve: 445px; }
+    .brand { padding-top: max(16px, env(safe-area-inset-top)); }
+    .stage { padding: 26px 0; }
+    .desc { margin-bottom: 12px; }
+    body:not(.more-open) .desc .b-facts, body:not(.more-open) .desc .gnote, body:not(.more-open) .note { display: none; }
+    .more { display: block; }
+    .dots { margin-top: 14px; }
+    .card-top { letter-spacing: .14em; }
+  }
   @media (max-height: 560px) {
+    :root { --reserve: 360px; }
     .brand { padding-top: 14px; }
-    .stage { padding: 22px 0; }
-    .dots { margin-top: 12px; }
+    .stage { padding: 18px 0; }
+    .dots { margin-top: 10px; }
   }
 
   @media (prefers-reduced-motion: reduce) {
@@ -540,6 +565,7 @@
     <div class="track" id="track"></div>
   </section>
   <div class="desc" id="desc"></div>
+  <button class="more" id="morebtn" type="button" aria-expanded="false">ⓘ Szczegóły</button>
 
   <div class="controls">
     <button class="arrow" id="prev" type="button" aria-label="Poprzednia gra">
@@ -1155,6 +1181,17 @@ layout(false);
   });
   document.addEventListener('pl3y:player', paint);
   paint();
+})();
+</script>
+<script>
+// „Szczegóły” na niskich ekranach: rozwija/zwija tabelkę i uwagę pod opisem gry.
+(function () {
+  var b = document.getElementById('morebtn');
+  b.addEventListener('click', function () {
+    var on = document.body.classList.toggle('more-open');
+    b.setAttribute('aria-expanded', on ? 'true' : 'false');
+    b.textContent = on ? '✕ Zwiń' : 'ⓘ Szczegóły';
+  });
 })();
 </script>
 </body>
