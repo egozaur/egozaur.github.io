@@ -1,1 +1,14 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120"><defs><radialGradient id="g" cx="50%" cy="35%" r="70%"><stop offset="0" stop-color="hsl(25 45% 42%)"/><stop offset="1" stop-color="hsl(25 40% 16%)"/></radialGradient></defs><rect width="120" height="120" fill="url(#g)"/><circle cx="60" cy="60" r="50" fill="none" stroke="#C9A85C" stroke-opacity=".5" stroke-width="2"/><text x="60" y="78" text-anchor="middle" font-family="Georgia,serif" font-size="52" font-weight="700" fill="#E3C77F">6</text></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120">
+<defs>
+<radialGradient id="bg6" cx="50%" cy="42%" r="70%"><stop offset="0" stop-color="#2c1716"/><stop offset="1" stop-color="#0C0B09"/></radialGradient>
+<linearGradient id="au6" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#E3C77F"/><stop offset=".55" stop-color="#C9A85C"/><stop offset="1" stop-color="#8A6A24"/></linearGradient>
+</defs>
+<rect width="120" height="120" fill="url(#bg6)"/>
+<circle cx="60" cy="60" r="55" fill="none" stroke="#C9A85C" stroke-opacity=".28" stroke-width="1"/>
+
+<path d="M74 40c4-14 14-22 26-22-6 6-10 14-12 24zM68 42c-2-14 2-26 12-32-2 10-2 20 2 30z" fill="#B9463B"/>
+<path d="M91 66l9 38" stroke="#8A6A24" stroke-width="4" stroke-linecap="round"/>
+<path d="M20 56c6-14 24-18 40-8 16-10 34-6 40 8-2 18-18 26-32 20-4-2-6-6-8-6s-4 4-8 6c-14 6-30-2-32-20z" fill="url(#au6)"/>
+<path d="M33 58c4-6 12-7 17-2-4 6-12 7-17 2zM87 58c-4-6-12-7-17-2 4 6 12 7 17 2z" fill="#0C0B09"/>
+<path d="M60 48v20" stroke="#0C0B09" stroke-opacity=".35" stroke-width="1.5"/>
+</svg>
