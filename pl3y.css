@@ -1,0 +1,37 @@
+/*
+ * PL3Y – wspólny wygląd lobby i gier (czerń + złoto). Ładowany jako /pl3y.css (jak /auth.js).
+ * Gry używają tokenów --pl3y-* z wartością zapasową, np. color: var(--pl3y-gold, #C9A85C),
+ * więc wyglądają poprawnie także lokalnie, gdy /pl3y.css nie istnieje (404).
+ * Większe gry z własną oprawą (Kurczacze Imperium, Tajniacy) tego pliku nie używają.
+ * Zmiana tutaj zmienia wszystkie gry naraz: gry ładują go z ?v=N, przy większej zmianie podbij N w grach.
+ */
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,600;0,700;1,600&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700&display=swap');
+
+:root{
+  /* tło i powierzchnie */
+  --pl3y-bg:#0C0B09; --pl3y-bg2:#13110E; --pl3y-glow:#1C1813; --pl3y-card:#17140F; --pl3y-card2:#221D15;
+  /* złoto */
+  --pl3y-gold:#C9A85C; --pl3y-gold-hi:#E3C77F; --pl3y-gold-deep:#8A6A24;
+  --pl3y-gold-dim:rgba(201,168,92,.22); --pl3y-gold-line:rgba(201,168,92,.38);
+  /* tekst */
+  --pl3y-text:#EFE8D8; --pl3y-muted:#A39C8C; --pl3y-faint:#6E685C;
+  /* stany */
+  --pl3y-good:#4FA36A; --pl3y-bad:#B9463B; --pl3y-blue:#3E6AA8;
+  /* typografia */
+  --pl3y-serif:"Cormorant Garamond",Georgia,"Times New Roman",serif;
+  --pl3y-sans:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;
+  --pl3y-mono:"JetBrains Mono",ui-monospace,Consolas,monospace;
+}
+
+/* Powrót do lobby (ten sam kształt we wszystkich grach) */
+.pl3y-tolobby{display:inline-flex;align-items:center;gap:.4em;padding:.45em .9em;border-radius:999px;white-space:nowrap;text-decoration:none;
+  font:600 11px/1 var(--pl3y-mono);letter-spacing:.22em;text-transform:uppercase;color:var(--pl3y-muted);
+  background:rgba(12,11,9,.6);border:1px solid var(--pl3y-gold-line);transition:color .15s,border-color .15s}
+@media (hover:hover){.pl3y-tolobby:hover{color:var(--pl3y-gold-hi);border-color:var(--pl3y-gold)}}
+
+/* Plakietka gracza: awatar + nick (rysuje ją auth.js, gry mogą użyć tej samej klasy) */
+.pl3y-me{display:inline-flex;align-items:center;gap:.5em;padding:.25em .8em .25em .25em;border-radius:999px;
+  background:rgba(12,11,9,.6);border:1px solid var(--pl3y-gold-line);color:var(--pl3y-text);font:600 13px/1 var(--pl3y-sans)}
+.pl3y-av{display:inline-grid;place-items:center;width:28px;height:28px;border-radius:50%;overflow:hidden;flex:none;
+  background:var(--pl3y-card2);border:1px solid var(--pl3y-gold-line);color:var(--pl3y-gold);font:700 13px/1 var(--pl3y-mono)}
+.pl3y-av img{width:100%;height:100%;object-fit:cover;display:block}
